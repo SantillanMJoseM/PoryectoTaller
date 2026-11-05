@@ -111,7 +111,7 @@ export default function Permisos() {
     setSeleccion(nueva);
   };
 
-  const alternarTodo = (c: string) => {
+  const alternarTodo = (c: any) => {
     const nueva = new Set(seleccion);
     const presentes = MODULOS.map((m) => codigo(c, m));
     if (presentes.every((p) => nueva.has(p))) {

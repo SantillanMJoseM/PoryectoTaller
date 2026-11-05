@@ -263,7 +263,7 @@ export const ordenesService = {
       .from("anexos-orden")
       .upload(ruta, archivo, { upsert: false });
     if (errUpload) throw new Error(mensajeError(errUpload));
-    const { data: pub } = supabase.storage.from("anexos-orden").createSignedUrl(ruta, 3600);
+    const { data: pub } = await supabase.storage.from("anexos-orden").createSignedUrl(ruta, 3600);
     const url = (pub as { signedUrl?: string } | null)?.signedUrl ?? null;
     const { data, error } = await supabase
       .from("anexos")

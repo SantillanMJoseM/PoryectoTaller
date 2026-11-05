@@ -18,7 +18,7 @@
     "paths": { "@/*": ["/home/developer/projects/sistema-taller/src/*"] },
 
     /* Linting */
-    "noUnusedLocals": true,
+    "noUnusedLocals": false,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true

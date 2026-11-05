@@ -71,6 +71,7 @@ import type {
   Empresa,
   Equipo,
   EquipoOrden,
+  EstadoOrden,
   Garantia,
   OrdenTrabajo,
   Producto,
@@ -702,6 +703,8 @@ const FORM_VACIO: FormOrden = {
   laudo_tecnico: "",
   garantia: "",
 };
+
+type OrdenConCliente = OrdenTrabajo & { clientes?: { nombre_cliente: string } | null };
 
 export default function Ordenes() {
   const { puede } = useAuth();

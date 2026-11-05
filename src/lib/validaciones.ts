@@ -170,7 +170,7 @@ export function validarContrasena(clave?: string | null): string | null {
 // Cola de emails
 // ---------------------------------------------------------------------------
 
-export function validarEmail(e: { para?: string | null; mensaje?: string | null }): Record<string, string> {
+export function validarEmail(e: { para?: string | null; mensaje?: string | null; cc?: string | null }): Record<string, string> {
   const campos: Record<string, string> = {};
   if (!esCorreo(e.para)) campos.para = "Destinatario inválido.";
   const listaCC = (e as { cc?: string | null }).cc;

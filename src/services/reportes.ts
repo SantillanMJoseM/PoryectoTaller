@@ -146,8 +146,7 @@ export const reportesService = {
         const filas = ((data ?? []) as Producto[])
           .filter((p) =>
             aplicaRangoNumerico(Number(p.precio_venta), filtros.precioInicial, filtros.precioFinal) &&
-            aplicaRangoNumerico(Number(p.stock), filtros.stockInicial, filtros.stockFinal))
-          as unknown as Record<string, unknown>[];
+            aplicaRangoNumerico(Number(p.stock), filtros.stockInicial, filtros.stockFinal)) as unknown as Record<string, unknown>[];
         return this._armar("productos", TITULOS.productos, cabecera, [
           { clave: "descripcion", titulo: "Descripción" },
           { clave: "unidad", titulo: "Unidad" },
@@ -162,8 +161,7 @@ export const reportesService = {
         const { data, error } = await q;
         if (error) throw new Error(mensajeError(error));
         const filas = ((data ?? []) as Servicio[])
-          .filter((s) => aplicaRangoNumerico(Number(s.precio), filtros.precioInicial, filtros.precioFinal))
-          as unknown as Record<string, unknown>[];
+          .filter((s) => aplicaRangoNumerico(Number(s.precio), filtros.precioInicial, filtros.precioFinal)) as unknown as Record<string, unknown>[];
         return this._armar("servicios", TITULOS.servicios, cabecera, [
           { clave: "nombre", titulo: "Nombre" },
           { clave: "descripcion", titulo: "Descripción" },
@@ -227,16 +225,14 @@ export const reportesService = {
         const r = rangoPeriodo(periodo);
         let q = supabase
           .from("movimientos_financieros")
-          .select("*, categorias(categoria), cuentas(cuenta)")
+          .select("*")
           .order("fecha_vencimiento");
         if (filtros.fechaInicial ?? r.fechaInicial) q = q.gte("fecha_vencimiento", filtros.fechaInicial ?? r.fechaInicial!);
         if (filtros.fechaFinal ?? r.fechaFinal) q = q.lte("fecha_vencimiento", filtros.fechaFinal ?? r.fechaFinal!);
         if (filtros.estado === "ingreso" || filtros.estado === "egreso") q = q.eq("tipo", filtros.estado);
         const { data, error } = await q;
         if (error) throw new Error(mensajeError(error));
-        const filas = ((data ?? []) as unknown as MovimientoFinanciero
-          & { categorias?: Pick<Categoria, "categoria"> | null }[]
-        )
+        const filas = ((data ?? []) as unknown as (MovimientoFinanciero & { categorias?: Pick<Categoria, "categoria"> | null })[])
           .filter((m) => aplicaRangoNumerico(Number(m.valor), filtros.precioInicial, filtros.precioFinal))
           .map((m) => ({
             fecha_vencimiento: m.fecha_vencimiento,
