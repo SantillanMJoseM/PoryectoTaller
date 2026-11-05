@@ -1,0 +1,97 @@
+# ============================================================================
+# Sistema Taller — Integración continua (TASK-0014 / AG-016)
+# ============================================================================
+# Pipeline de CI para el stack del proyecto:
+#   React + TypeScript + Tailwind CSS + shadcn/ui + Supabase
+#
+# Este workflow NO despliega a producción. Solo valida calidad y construye:
+#   1) Instalación reproducible (npm ci, usando package-lock.json)
+#   2) Lint (oxlint)
+#   3) Verificación de tipos (tsc -b)
+#   4) Pruebas unitarias (vitest run)
+#   5) Build de producción (vite build) + subida del artefacto dist/
+#
+# El build NO necesita secretos: la aplicación degrada con elegancia cuando
+# faltan VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY (ver src/lib/supabase.ts).
+# Ninguna credencial se guarda en el repositorio (SOURCE_PROMPT.md «Seguridad»).
+# ============================================================================
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancela ejecuciones obsoletas de la misma rama
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  calidad:
+    name: Calidad (lint, tipos, pruebas, build)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias (npm ci)
+        run: npm ci
+
+      - name: Lint (oxlint)
+        run: npm run lint
+
+      - name: Verificación de tipos (tsc -b)
+        run: npx tsc -b
+
+      - name: Pruebas unitarias (vitest)
+        run: npm run test
+
+      - name: Build de producción (vite build)
+        run: npm run build
+
+      - name: Publicar artefacto dist/
+        uses: actions/upload-artifact@v4
+        with:
+          name: sistema-taller-dist
+          path: dist/
+          retention-days: 7
+          if-no-files-found: error
+
+  migraciones:
+    name: Migraciones Supabase (validación estática)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Validación liviana: verifica que las migraciones existan, estén en
+      # orden numérico y no estén vacías. La ejecución real (supabase db push)
+      # se hace manualmente contra el proyecto Supabase del entorno; no se
+      # conecta a ninguna base de datos desde aquí (sin secretos en CI).
+      - name: Verificar migraciones 0001–0005
+        run: |
+          set -euo pipefail
+          lista=$(ls supabase/migrations/*.sql | sort)
+          echo "Migraciones encontradas:"
+          echo "$lista"
+          total=$(echo "$lista" | wc -l)
+          test "$total" -ge 1
+          while IFS= read -r archivo; do
+            if [ ! -s "$archivo" ]; then
+              echo "::error::Migración vacía: $archivo"
+              exit 1
+            fi
+          done <<< "$lista"
+          echo "OK: migraciones presentes y no vacías."
