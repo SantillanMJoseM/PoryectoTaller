@@ -42,7 +42,13 @@ Project root: /home/developer/projects/sistema-taller
 Do not modify AI-Project-Factory or other projects.
 Produce files inside project root only.
 Use Spanish for UI text.
+
+SOURCE OF TRUTH: docs/requirements/SOURCE_PROMPT.md (copied from /home/developer/prompts/PROMPT_SISTEMA_TALLER.md).
+You MUST conserve ALL modules and business rules from that document. Do NOT invent new modules or change module names.
+Required modules: Autenticacion admin, Panel principal, Clientes, Productos, Servicios, Ordenes de trabajo, Ventas, Garantias, Financiero, Archivos/Documentos, Usuarios, Permisos, Informes/Reportes, Auditoria, Cola de emails, Portal del cliente, Configuracion de empresa.
+Required entities/tables as in source prompt (nombres en espanol).
 """
+
 
 prompt = f"""You are {task['agent_id']} working on Sistema Taller.
 
@@ -62,6 +68,7 @@ Instructions:
 - For code tasks, write runnable code.
 - Run available tests if applicable (npm/vitest) but do not hang.
 - After finishing, report files created/modified and tests run.
+- Read SOURCE_PROMPT.md first and align deliverables to it. Do not add or remove modules.
 {dep_context}
 
 Begin now.

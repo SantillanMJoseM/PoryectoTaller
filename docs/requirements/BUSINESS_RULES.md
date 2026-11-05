@@ -6,289 +6,269 @@
 | Tarea | TASK-0001 — Requirements Analysis |
 | Autor | AG-004 Business Analyst |
 | Fecha | 2026-11-05 |
-| Versión | 1.1 — **BORRADOR PENDIENTE DE VALIDACIÓN** (v1.1: corregido typo en el índice RB-013; sin cambios de contenido) |
-| Estado | Hereda supuestos A-01..A-04 y preguntas abiertas OQ-01..OQ-06 de `FUNCTIONAL_REQUIREMENTS.md` (§2, §16). Escalado a AG-001 |
+| Versión | **2.0** — Rebasing contra la fuente de verdad (sustituye RB-001…RB-020 + RB-PARAM de v1.x, que pertenecían a un dominio automotriz no presente en SP; ver `FUNCTIONAL_REQUIREMENTS.md` §9) |
+| Fuente de verdad | `docs/requirements/SOURCE_PROMPT.md` (SP) |
+| Trazabilidad | RF-xxx en `FUNCTIONAL_REQUIREMENTS.md`; RNF-xxx en `NON_FUNCTIONAL_REQUIREMENTS.md`; HU-xxx en `USER_STORIES.md` |
 
 ---
 
-## 1. Notación
+## 1. Notación y clasificación
 
-### 1.1 Clasificación (idéntica a los otros documentos de requisitos)
-- `[CONFIRMADA]` — impuesta por instrucción explícita del usuario/prompt.
-- `[INFERIDA]` — derivada del dominio asumido "taller mecánico automotriz" (A-01). **Debe validarse.**
-- `[RECOMENDADA]` — buena práctica propuesta; rechazable sin romper el MVP.
-- `[PENDIENTE OQ-xx]` — el parámetro/valor depende de una decisión de AG-001.
+- `[CONFIRMADA]` — texto o regla explícita de SP. **Obligatoria tal cual**; no se renombra ni se reinterpretan sus términos de negocio. RB-001…RB-009 corresponden **una a una** a las 8 viñetas de SP §REGLAS DE NEGOCIO IMPORTANTES (más la separación explícita formato-fecha/formato-monedas) y deben conservarse íntegras.
+- `[DERIVADA]` — regla necesaria para hacer determinista/coherente una instrucción o el modelo de datos de SP (p. ej. fórmulas de totales implícitas en columnas del esquema). No agrega procesos nuevos: solo fija la interpretación más simple y consistente (cláusula final de SP).
+- `[RECOMENDADA]` — propuesta del analista, descartable sin violar SP.
+- `[PENDIENTE OQ-xx]` — detalle reservado a decisión de AG-001/AG-003 (lista en `FUNCTIONAL_REQUIREMENTS.md` §8).
 
-### 1.2 Capas de aplicación (dónde se hace cumplir la regla)
-| Capa | Mecanismo | Naturaleza |
-|---|---|---|
-| **L1** UI (React + shadcn/ui) | Validación en formularios, mensajes en español | Comodidad; **nunca** límite de seguridad |
-| **L2** Restricciones Postgres/Supabase | `UNIQUE`, `CHECK`, FK, índices parciales, triggers | Dura: garantía aunque se salte la UI |
-| **L3** RLS / permisos Supabase | Políticas por rol (RF-003) | Dura: autoriza el acceso a datos |
-| **L4** RPC atómica (función Postgres) | función `SECURITY DEFINER`, transacción completa | Dura: operaciones compuestas (OT+stock+documento) |
-| **L5** Job / Edge Function | Expiraciones, alertas, notificaciones asincrónicas | Dura con reintento (RNF-A-04) |
+Capas de aplicación (para verificabilidad):
 
-**Principio rector:** toda regla existe en L2/L3/L4 aunque también se muestre en L1. Una regla sin test automatizable no se considera implementada (RNF-M-02).
+| Capa | Mecanismo en este proyecto |
+|---|---|
+| **L1** UI | Validación React + shadcn/ui, mensajes en español |
+| **L2** Postgres | `CHECK`, `UNIQUE`, FK, triggers/funciones SQL |
+| **L3** RLS | Políticas Row Level Security de Supabase por sesión administrativa/cliente |
+| **L4** RPC/transacción | Función Postgres atómica para operaciones compuestas (facturar, ajustar stock, procesar cola) |
+| **L5** Job/Edge Function | Procesamiento de cola de emails, detección de vencidos, expiración de sesiones |
 
-### 1.3 Principios de negocio transversales `[INFERIDA]`
-- **P-01 Inmutabilidad documental:** un documento (OT, cotización, cobro) nunca se borra ni se reescribe una vez cerrado; se corrige con un documento negativo vinculado (RB-008).
-- **P-02 Trazabilidad total:** todo cambio de stock, estado de OT, precio de documento o parámetro deja bitácora (RF-036).
-- **P-03 Consistencia del dinero:** total = subtotal servicios + subtotal repuestos − descuento + impuesto, recalculable a partir de las líneas guardadas (snapshots, RB-010).
-- **P-04 Nada se pierde ante un fallo:** las operaciones multi-tabla son atómicas o compensables (RNF-A-02).
+Principio: toda regla dura vive en L2/L3/L4; L1 es comodidad. La verificación de cada RB es un test automatizado o un paso de QA con datos semilla (RNF-M-02).
 
 ---
 
 ## 2. Índice de reglas
 
-| ID | Nombre (una línea) | Clasificación |
+| ID | Nombre | Clasificación |
 |---|---|---|
-| RB-001 | Identificación de cliente única (tipo + número normalizado) | INFERIDA |
-| RB-002 | Cliente no se elimina con historial; borrado lógico preferido | INFERIDA |
-| RB-003 | Placa de vehículo única y normalizada | INFERIDA |
-| RB-004 | Máximo una OT activa por vehículo | INFERIDA |
-| RB-005 | Máquina de estados válida de la OT | INFERIDA |
-| RB-006 | Reservas no exceden el stock disponible | INFERIDA |
-| RB-007 | Stock solo cambia por movimientos; nunca negativo | INFERIDA |
-| RB-008 | Documentos cerrados inmutables; solo anulación por Admin | INFERIDA |
-| RB-009 | Horas técnicas: rango, paso 0,1 h y edición acotada | INFERIDA |
-| RB-010 | Snapshot de precios en documentos | INFERIDA |
-| RB-011 | Cita duplicada por vehículo: aviso sin bloqueo | INFERIDA |
-| RB-012 | Máquina de estados de citas; cancelación con motivo | INFERIDA |
-| RB-013 | Correlativos únicos y monótonos, sin reutilización | INFERIDA |
-| RB-014 | OT requiere cliente+vínculo coherente del vehículo | INFERIDA |
-| RB-015 | Descuentos por línea/documento; total ≥ 0 | INFERIDA |
-| RB-016 | Entrega con costo 0 exige justificación | INFERIDA |
-| RB-017 | Precio de venta 0 = "por definir" y obliga fijar precio | INFERIDA |
-| RB-018 | OT entregada ⇒ exactamente 1 documento de cobro vigente | INFERIDA |
-| RB-019 | Suma de pagos ≤ total del documento; saldo ≥ 0 | INFERIDA |
-| RB-020 | Cotización expira automáticamente por fecha | INFERIDA |
-| RB-PARAM | Tabla de parámetros configurables | INFERIDA |
+| RB-001 | No eliminar datos de producción durante pruebas | CONFIRMADA |
+| RB-002 | Stock se actualiza automáticamente al agregar/eliminar productos en órdenes o ventas | CONFIRMADA |
+| RB-003 | Una orden se factura una sola vez (movimiento + facturado=true) | CONFIRMADA |
+| RB-004 | Una venta se factura una sola vez (movimiento + facturado=true) | CONFIRMADA |
+| RB-005 | Los reportes PDF usan los datos de la empresa | CONFIRMADA |
+| RB-006 | Los permisos controlan acceso a cada módulo y acción | CONFIRMADA |
+| RB-007 | Fechas en formato dd/mm/aaaa | CONFIRMADA |
+| RB-008 | Valores monetarios con 2 decimales | CONFIRMADA |
+| RB-009 | La auditoría registra acciones relevantes | CONFIRMADA |
+| RB-010 | Estados de orden: exactamente los 6 de SP | CONFIRMADA |
+| RB-011 | Login administrativo = correo + contraseña; hash bcrypt/argon2 | CONFIRMADA |
+| RB-012 | Ingreso al portal = correo + documento coincidentes con un cliente | CONFIRMADA |
+| RB-013 | Sesiones persistentes con expiración | CONFIRMADA |
+| RB-014 | `pagado` con `fecha_pago`; tipo ingreso/egreso obligatorio | DERIVADA |
+| RB-015 | Estados de email: pendiente/enviando/enviado/fallido, con transiciones | CONFIRMADA+DERIVADA |
+| RB-016 | Categoría/cuenta de un movimiento deben coincidir en `tipo` | DERIVADA |
+| RB-017 | `subtotal = cantidad × precio` en toda línea | DERIVADA |
+| RB-018 | `valor_total` de orden = Σ productos + Σ servicios | DERIVADA |
+| RB-019 | `valor_total` de venta = Σ ítems − descuento, ≥ 0 | DERIVADA |
+| RB-020 | Stock nunca negativo por acción de usuario directo | DERIVADA `[PENDIENTE OQ-01]` |
+| RB-021 | Líneas guardan snapshot de descripción/precio del catálogo | DERIVADA |
+| RB-022 | No se elimina un registro referenciado por FK | DERIVADA `[PENDIENTE OQ-03]` |
+| RB-023 | Grupo de permisos inactivo no otorga acceso; usuario sin grupo activo no entra | DERIVADA |
+| RB-024 | `fecha_expiracion` del usuario limita el login | DERIVADA |
+| RB-025 | Detección de vencidos: no pagado y `fecha_vencimiento` < hoy | DERIVADA |
+| RB-026 | Mapeo de la Situación del filtro financiero | DERIVADA |
+| RB-027 | Facturar enlaza `lanzamiento_id` (y `venta_id`) con el movimiento creado | CONFIRMADA (modelo) |
+| RB-028 | Registro de auditoría: usuario, tarea, fecha, hora, IP | CONFIRMADA |
+| RB-029 | Códigos de permiso: formato `<act><Módulo>` con 6×14 vocabulario | CONFIRMADA |
+| RB-030 | Una sola empresa (registro único) | DERIVADA |
+| RB-031 | RLS en Supabase sobre todas las tablas | CONFIRMADA (seguridad) |
+| RB-032 | Separación estricta de rol administrador / rol cliente | CONFIRMADA (seguridad) |
+| RB-033 | Validación de formularios en frontend **y** backend | CONFIRMADA (seguridad) |
+| RB-034 | Sanitización de entradas | CONFIRMADA (seguridad) |
+| RB-035 | Rutas privadas protegidas | CONFIRMADA (seguridad) |
+| RB-036 | No exponer credenciales en el frontend | CONFIRMADA (seguridad) |
 
-> Numerales RB-001..RB-020 son los mismos citados en `FUNCTIONAL_REQUIREMENTS.md` y `NON_FUNCTIONAL_REQUIREMENTS.md` (RNF-M-02). RB-009 y RB-020 se definen aquí para completar la serie 001–020 anunciada en RNF-M-02.
-
----
-
-## 3. Registro: clientes y vehículos
-
-### RB-001 — Identificación única de cliente `[INFERIDA]`
-- **Enunciado:** no pueden existir dos clientes con el mismo par (tipo de identificación, número normalizado). Normalización: `upper(trim(numero))` sin separadores (`-`, `.`).
-- **Aplicación:** L2 `UNIQUE INDEX (tipo_identificacion, numero_normalizado)`; L1 mensaje en vivo.
-- **Mensaje UI:** «Ya existe un cliente registrado con ese número de identificación.»
-- **Verificación:** test de integración — crear 2 clientes con mismo número → 23505; con y sin separadores se detecta como duplicado.
-- **Trazabilidad:** RF-005. Formato legal de identificaciones por país: `[PENDIENTE OQ-02]`.
-
-### RB-002 — Eliminación de clientes `[INFERIDA]`
-- **Enunciado:** un cliente con vehículos, OT, cotizaciones o documentos de cobro asociados **no** puede eliminarse físicamente; la operación estándar es desactivar (borrado lógico). La eliminación física es solo Admin y solo si no existe ninguna referencia (caso: alta errónea sin historial).
-- **Aplicación:** L4 `delete_cliente(p_id)` que verifica referencias; L2 FK `ON DELETE RESTRICT` como red.
-- **Mensaje UI:** «El cliente tiene órdenes de trabajo asociadas. Se registrará como inactivo.»
-- **Verificación:** test: eliminar cliente con OT → rechazado; sin referencias → OK; desactivado no aparece en búsquedas de alta pero sí en historiales.
-- **Trazabilidad:** RF-005, RF-006. Interacción con derecho de supresión local: `[PENDIENTE OQ-02]` (RNF-S-05).
-
-### RB-003 — Placa única y normalizada `[INFERIDA A-01]`
-- **Enunciado:** la placa de vehículo es única en el sistema, normalizada a mayúsculas sin espacios. Cada vehículo pertenece a exactamente un cliente (RF-008).
-- **Aplicación:** L2 `UNIQUE INDEX (upper(replace(placa,' ','')))`; L1 normaliza al perder foco.
-- **Mensaje UI:** «Esa placa ya está registrada (vehículo: {placa} — {cliente}).»
-- **Verificación:** test: alta duplicada con variantes ` abc-123 / ABC123` → rechazada. Patrón de formato según país: `[PENDIENTE OQ-01/OQ-02]` (si A-01 cambia, esta regla se re-formaliza al activo equivalente).
-- **Trazabilidad:** RF-008, RF-009.
+> SP, frase final, obliga: “No omitas ningún módulo, tabla, relación, filtro, reporte ni flujo descrito”. Las RB-001…RB-009 y RB-031…RB-036 son la transcripción operativa de las secciones §REGLAS DE NEGOCIO y §SEGURIDAD de SP; ninguna fue modificada ni eliminada.
 
 ---
 
-## 4. Órdenes de trabajo (OT)
+## 3. Reglas confirmadas de SP (núcleo) 
 
-### RB-013 — Correlativo de documentos `[INFERIDA]`
-- **Enunciado:** OT, cotizaciones y documentos de cobro reciben un correlativo único al crearse: `{serie}{numero}` (serie y padding desde RB-PARAM). El número se asigna atómicamente con la creación (misma transacción, `nextval` por serie en L4). Un número emitido **nunca se reutiliza**, incluso si el documento se cancela o anula. Cambiar la serie en RB-PARAM inicia una nueva secuencia; los números antiguos se conservan.
-- **Aplicación:** L4 + L2 `UNIQUE` sobre el correlativo por tipo de documento.
-- **Verificación:** test de concurrencia: 2 creaciones simultáneas de OT no producen igual correlativo; cancelación de OT no libera el número.
-- **Trazabilidad:** RF-016, RF-026, RF-027, RF-035. Obligatoriedad fiscal de series sin huecos: `[PENDIENTE OQ-02]`.
+### RB-001 — No eliminar datos de producción durante pruebas `[CONFIRMADA]`
+- **Enunciado (SP textual):** “No eliminar datos de producción durante pruebas.”
+- **Aplicación:** L2/L5: los scripts/seed de prueba crean datos en aislamiento (base/schema de test o prefijo identificable + limpieza solo de datos de test); está prohibido `TRUNCATE`/`DELETE` masivo sobre datos reales. Las pruebas de QA usan datos de ejemplo mínimos (SP §ENTREGABLE), no la producción.
+- **Verificación:** revisión del pipeline de test (no toca instancia de producción); job de seed testeado idempotente sobre schema vacío.
+- **Trazabilidad:** RNF-M-02, §ENTREGABLE SP.
 
-### RB-014 — Vínculo coherente cliente–vehículo `[INFERIDA]`
-- **Enunciado:** toda OT referencia un cliente y un vehículo, y el vehículo debe pertenecer a ese cliente. La UI filtra vehículos por el cliente seleccionado.
-- **Aplicación:** L4 (valida `vehiculo.client_id = ot.client_id`), L2 FKs `NOT NULL`, L1 filtro de combobox.
-- **Mensaje UI:** «El vehículo no pertenece al cliente seleccionado.»
-- **Verificación:** test: RPC con cliente A + vehículo B → error; UI nunca lista vehículos de otro cliente.
-- **Trazabilidad:** RF-016, RF-008.
+### RB-002 — Actualización automática de stock `[CONFIRMADA]`
+- **Enunciado (SP textual):** “El stock se actualiza automáticamente al agregar/eliminar productos en órdenes o ventas.”
+- **Enunciado ampliado operativo `[DERIVADA]`:** en la misma transacción que la línea: alta de una línea en `productos_orden` (orden) o `items_venta` (venta) ⇒ `stock -= cantidad`; retiro de línea ⇒ `stock += cantidad` previamente descontada; cambio de cantidad ajusta la diferencia. Invariante: `stock` = valor inicial + Σ(devoluciones por retiro) − Σ(cantidades vigentes en líneas de órdenes y ventas).
+- **Aplicación:** L4 (RPC `agregar_linea/quitar_linea` o trigger sobre insert/delete de las tablas línea) — prohibida la escritura directa de `productos.stock` desde el cliente (L3 RLS restringe UPDATE).
+- **Mensaje UI:** al exceder stock, aviso según política OQ-01 («Stock disponible: X» y sugerencia de estado “Aguardando Piezas”).
+- **Verificación:** test de propiedad: secuencias arbitrarias alta/edición/baja de líneas ⇒ invariante 0 desviación.
+- **Trazabilidad:** RF-017, RF-018, RF-030, RF-037.
 
-### RB-004 — Una OT activa por vehículo `[INFERIDA — núcleo]`
-- **Enunciado:** un vehículo no puede tener simultáneamente más de una OT en estado activo (`Abierta`, `En_proceso`, `Esperando_repuestos`, `Verificación_QC`, `Lista_entrega`). Al intentar crear una segunda, la UI bloquea y enlaza a la OT existente.
-- **Aplicación:** L2 índice único parcial:
-  `CREATE UNIQUE INDEX ON orden_trabajo(vehiculo_id) WHERE estado IN ('Abierta','En_proceso','Esperando_repuestos','Verificación_QC','Lista_entrega');`
-- **Mensaje UI:** «El vehículo {placa} ya tiene una OT {correlativo} en {estado}. ¿Verla?»
-- **Verificación:** test concurrente de doble alta → una gana, otra recibe el mensaje; tras entregar/cancelar se permite la siguiente.
-- **Trazabilidad:** RF-016, RF-021. Depende de A-01 (objeto intervenido): `[PENDIENTE OQ-01]`.
+### RB-003 — Facturación única de orden `[CONFIRMADA]`
+- **Enunciado (SP textual):** “Una orden puede facturarse una sola vez; al facturar se crea un movimiento financiero y se marca `facturado=true`.”
+- **Aplicación:** L4 `facturar_orden(id)` verifica `facturado = false` (y `lanzamiento_id IS NULL`) en la transacción; L2 `CHECK` de apoyo no posible entre tablas ⇒ constraint parcial: `CREATE UNIQUE INDEX ... ON ordenes_trabajo(lanzamiento_id) WHERE lanzamiento_id IS NOT NULL` refuerza vínculo 1:1. L1 oculta el botón si `facturado=true`.
+- **Mensaje UI:** «La orden ya fue facturada.»
+- **Efecto:** inserción en `movimientos_financieros` (`tipo='ingreso'`, `valor=valor_total`, cliente, forma de pago del diálogo de facturación `[DERIVADA]`), update `ordenes_trabajo.lanzamiento_id`, `facturado=true`. Sin función de “desfacturar” (SP no la define — no inventar procesos).
+- **Verificación:** test: doble llamada concurrente ⇒ un movimiento creado; `facturado` y `lanzamiento_id` coherentes; auditoría registra la acción.
+- **Trazabilidad:** RF-028, RB-027, RB-009.
 
-### RB-005 — Máquina de estados de la OT `[INFERIDA]`
-- **Estados:** `Abierta`, `En_proceso`, `Esperando_repuestos`, `Verificación_QC`, `Lista_entrega`, `Entregada` (terminal), `Cancelada` (terminal).
-- **Transiciones válidas (únicas permitidas):**
+### RB-004 — Facturación única de venta `[CONFIRMADA]`
+- **Enunciado (SP textual):** “Una venta puede facturarse una sola vez; al facturar se crea un movimiento financiero y se marca `facturado=true`.”
+- **Aplicación:** como RB-003; además `movimientos_financieros.venta_id` se rellena con la venta (vínculo bidireccional del modelo SP). Índices parciales análogos.
+- **Verificación:** como RB-003 + comprobación del doble vínculo (`ventas.lanzamiento_id` ↔ `movimientos_financieros.venta_id`).
+- **Trazabilidad:** RF-035, RB-027.
 
-| Desde | A | Quién | Condición |
+### RB-005 — PDF con datos de la empresa `[CONFIRMADA]`
+- **Enunciado (SP textual):** “Los reportes PDF deben usar los datos de la empresa.”
+- **Operacionalización `[DERIVADA]`:** encabezado de todo PDF (reportes e impresiones de orden/venta/garantía) contiene: nombre, CNPJ/IE, dirección, teléfono/correo de `empresa` y logo (`url_logo`) (SP §FUNCIONALIDADES 12: “encabezado de empresa, datos tabulados y paginación”; §FUNCIONALIDADES 16: “Logo para reportes PDF”).
+- **Aplicación:** L1/L4: el generador lee `empresa` en cada ejecución (sin hardcode).
+- **Verificación:** QA visual + test del generador con empresa semilla modificada: el PDF cambia.
+- **Trazabilidad:** RF-027, RF-036, RF-040, RF-065, RF-078, RF-082.
+
+### RB-006 — Permisos controlan módulo + acción `[CONFIRMADA]`
+- **Enunciado (SP textual):** “Los permisos controlan acceso a cada módulo y acción.”
+- **Operacionalización:** para cada módulo cubierto (RB-029) y cada código `a/e/d/v/r/c`, la presencia del código en el grupo del usuario habilita o deniega: menú (UI), endpoint/RPC (L4) y datos (L3 RLS). La denegación ocurre **aunque se invoque la API directamente**.
+- **Verificación:** matriz de pruebas RLS×código: por cada (módulo, acción, permiso presente/ausente) → 200/403-oculto. Suite automatizada por tabla.
+- **Trazabilidad:** RF-006, RF-009, RF-059…061, RNF-S-02.
+
+### RB-007 — Formato de fechas dd/mm/aaaa `[CONFIRMADA]`
+- **Enunciado (SP textual):** “Las fechas deben mostrarse en formato dd/mm/aaaa.”
+- **Aplicación:** L1 (formateo centralizado en UI) **y** en documentos impresos/PDF. Almacenamiento interno en tipos fecha/hora nativos (Postgres) — la regla es de **visualización** `[DERIVADA]`.
+- **Verificación:** test unitario del formateador + revisión QA de cada pantalla y PDF.
+- **Trazabilidad:** RNF-U-01, RNF-U-05.
+
+### RB-008 — Moneda con 2 decimales `[CONFIRMADA]`
+- **Enunciado (SP textual):** “Los valores monetarios deben mostrarse con 2 decimales.”
+- **Operacionalización `[DERIVADA]`:** tipos `numeric(12,2)` (o superior) para importes; redondeo a 2 decimales en totales; formato de visualización con separadores locales. Moneda/símbolo no especificado por SP → `[PENDIENTE]`: por los campos brasileños del modelo (CNPJ, IE, CPF, RG) se infiere entorno BRL (R$) como default visual, configurable en diseño; OQ no bloqueante.
+- **Verificación:** test del formateador monetario; `CHECK (valor >= 0)` en movimientos (el signo viene de `tipo`) `[DERIVADA]`.
+- **Trazabilidad:** RNF-U-05, RF-015, RF-024, RF-034.
+
+### RB-009 — Auditoría de acciones relevantes `[CONFIRMADA]`
+- **Enunciado (SP textual):** “La auditoría debe registrar acciones relevantes.” + §FUNCIONALIDADES 13: registrar usuario, tarea, fecha, hora, IP.
+- **Conjunto mínimo de “relevantes” `[DERIVADA]` (verificable):** login/logout (admin y portal), crear/editar/eliminar en clientes, productos, servicios, órdenes, ventas, garantías, movimientos, documentos, usuarios, permisos, empresa; facturar orden/venta; cambiar estado de orden; actualizar stock vía líneas; enviar/reintentar/eliminar email; limpiar logs. Lista cerrada se aprueba en diseño.
+- **Aplicación:** L2/L4 (trigger/función común o helper en RPC — nunca solo desde la UI).
+- **Verificación:** test por acción: tras ejecutarla existe fila en `logs_auditoria` con los 5 campos.
+- **Trazabilidad:** RF-067…RF-069.
+
+---
+
+## 4. Reglas confirmadas de SP (modelo y flujos) 
+
+### RB-010 — Estados de la orden `[CONFIRMADA]`
+Solo estos 6 valores, con nombres exactos: `Presupuesto, Abierta, En Proceso, Finalizado, Cancelado, Aguardando Piezas`. L2 `CHECK (estado IN (...))`. No se añaden (p. ej. “Lista_entrega”) ni renombran. Las transiciones entre ellos no están restringidas por SP → `[DERIVADA]` que permite cualquier cambio explícito con auditoría (RB-009); el diseño no debe inventar máquina de estados sin autorización AG-001. **Trazabilidad:** RF-021.
+
+### RB-011 — Credenciales administrativas `[CONFIRMADA]`
+Login por correo + contraseña; hash bcrypt/argon2 (o Supabase Auth, que aplica hash seguro equivalente — decisión de diseño `[INFERIDA]`, el requisito de negocio es “hash seguro, nunca texto plano”). **Trazabilidad:** RF-001, RF-002, RF-055.
+
+### RB-012 — Acceso al portal por correo + documento `[CONFIRMADA]`
+“Si coinciden con un cliente registrado, crear sesión de cliente” (SP §AUTENTICACIÓN). Coincidencia sobre `clientes.correo` + `clientes.documento` (par exacto; normalización de espacios/mayúsculas `[RECOMENDADA]`). Sin coincidencia → sin sesión. Un solo cliente coincidente esperado; si el seed/operador creara duplicados, `[DERIVADA]` L2 `UNIQUE(correo, documento)` no exigible por SP → comportamiento: primer registro + alerta al admin `[RECOMENDADA]` — validar. **Trazabilidad:** RF-075.
+
+### RB-013 — Sesión con expiración `[CONFIRMADA]`
+Sesión persistente con expiración para ambos tipos de sesión (admin y cliente, SP §AUTENTICACIÓN). Vigencias concretas: `[DERIVADA]` default sugerido 24 h admin (refresh silencioso), 8 h portal `[RECOMENDADA]`; decisión final diseño. **Trazabilidad:** RF-003, RF-005, RNF-S-08.
+
+### RB-015 — Ciclo de estados de email `[CONFIRMADA]`
+Valores exactos: `pendiente, enviando, enviado, fallido`. Transiciones válidas `[DERIVADA]`: pendiente→enviando→enviado | fallido; fallido→pendiente (reintento, RF-073) o →enviando directo; ningún estado regresa a “enviado→pendiente”. L2 `CHECK`. Procesamiento en L5. **Trazabilidad:** RF-070…RF-073.
+
+### RB-027 — Vínculo de facturación `[CONFIRMADA — modelo]`
+La columna `lanzamiento_id` (inglés de “lanzamiento” = asiento contable) de órdenes y ventas referencia `movimientos_financieros.id_movimiento`; `movimientos_financieros.venta_id` referencia la venta. Ambos lados se escriben en la misma transacción del facturar (RB-003/RB-004). **Trazabilidad:** RF-028, RF-035, RF-042.
+
+### RB-028 — Campos de auditoría `[CONFIRMADA]`
+`logs_auditoria` registra `usuario, tarea, fecha, hora, ip` (5 campos exactos de SP; sin campos extra de negocio — detalle técnico como `id_log` ya está en el modelo). `[DERIVADA]` `ip` obtenida del contexto de request, no de la UI. **Trazabilidad:** RF-067.
+
+### RB-029 — Vocabulario de códigos de permiso `[CONFIRMADA]`
+Actividades: `a`=agregar, `e`=editar, `d`=eliminar, `v`=visualizar, `r`=reporte, `c`=configuración. Módulos cubiertos (14, nombres SP): Cliente, Producto, Servicio, Orden, Venta, Garantía, Movimiento, Archivo, Usuario, Permiso, Respaldo, Auditoría, Email, Empresa. Ejemplos SP: `aCliente, eCliente, dCliente, vCliente, rCliente; aProducto, …`. Almacenamiento: texto separado por coma **o** JSON (SP da ambas opciones). `[PENDIENTE]` efecto de códigos de “Respaldo” sin módulo funcional en SP → RF-060 CA3 (no inventar pantalla). **Trazabilidad:** RF-059…RF-061, RB-006.
+
+### RB-031…RB-036 — Reglas de seguridad de SP `[CONFIRMADA]`
+Transcripción operativa de SP §SEGURIDAD:
+- **RB-031 RLS:** todas las tablas del modelo tienen políticas Row Level Security activas. Nadie consulta sin sesión administrativa o de cliente válida; la visibilidad se deriva del grupo de permisos (RB-006) para admin y del propio `id_cliente` para portal.
+- **RB-032 Roles separados:** sesión “administrador” (usuarios + permisos) y sesión “cliente” (clientes vía portal) son tipos incompatibles: una sesión de cliente jamás accede tablas/acciones administrativas (RLS por tipo de token/claim).
+- **RB-033 Validación doble:** cada formulario valida en frontend (reglas de este documento) **y** en backend (constraints L2 + checks L4); ninguna regla dura depende de la validación de L1.
+- **RB-034 Sanitización:** entradas se sanitizan/escapan (texto libre en descripciones, mensajes de email, URLs de documentos); salida codificada en la UI; sin `dangerouslySetInnerHTML` sin saneado `[DERIVADA]`; parámetros por bind (PostgREST/SQL parametrizado).
+- **RB-035 Rutas privadas:** toda ruta de panel y portal exige sesión válida del tipo correcto; rutas no públicas inaccesibles sin credenciales (redirección a login).
+- **RB-036 Sin credenciales en el frontend:** solo la `anon key` pública de Supabase en el bundle; `service_role`/secretos SMTP únicamente server-side (Edge Functions/vars); 0 claves privadas en repo/bundle.
+- **Verificación:** suite de pruebas RLS por tabla/rol; escaneo del bundle (grep gitleaks); prueba de ruta directa sin sesión → login; fuzzing de formularios. **Trazabilidad:** RNF-S-01…S-07.
+
+---
+
+## 5. Reglas derivadas del modelo (interpretación mínima) 
+
+### RB-014 — Coherencia pago/tipo de movimiento `[DERIVADA]`
+`tipo ∈ {ingreso, egreso}` (L2 CHECK). `pagado=true` implica `fecha_pago NOT NULL` (L4/L2 con CASE-check `[INFERIDA]` — SP no lo enlaza; es la invariante mínima que hace significativa la columna). Valores de movimiento positivos; la dirección la da `tipo` (RB-008).
+
+### RB-016 — Concordancia de tipo en categoría/cuenta `[DERIVADA]`
+Al crear/editar un movimiento, `categoria_id.tipo` y `cuenta_id.tipo` deben coincidir con `movimientos_financieros.tipo`; solo registros `estado=true` seleccionables. SP define los campos `tipo/estado` de esas tablas y su uso (filtros); esta es su consecuencia de integridad mínima. Mensaje: «La categoría seleccionada es de egresos.»
+
+### RB-017 — Subtotal de línea `[DERIVADA]`
+`subtotal = cantidad × precio` (redondeo RB-008) en `productos_orden`, `servicios_orden`, `items_venta`. Recalculado por L4 en insert/update de línea (no confiado a la UI). `cantidad > 0`, `precio ≥ 0`.
+
+### RB-018 — Total de orden `[DERIVADA]`
+`ordenes_trabajo.valor_total = Σ productos_orden.subtotal + Σ servicios_orden.subtotal`. Sin descuento/impuesto en orden (SP no los define para órdenes — no agregar). Recalculado L4 en cada cambio de líneas y al facturar (RB-003 usa este valor).
+
+### RB-019 — Total de venta `[DERIVADA]`
+`ventas.valor_total = Σ items_venta.subtotal − descuento`, con `descuento ≥ 0` y `valor_total ≥ 0` (L2 CHECK). Descuento en venta, no en orden (SP).
+
+### RB-020 — Stock no negativo `[DERIVADA]` `[PENDIENTE OQ-01]`
+`CHECK (stock >= 0)` como última defensa L2. Comportamiento al agregar línea con cantidad > stock disponible es la decisión OQ-01 (advertir+permitir vs bloquear). Ambas opciones conservan la invariante: el stock físico real nunca se fuerza a negativo en el dato (si se permite la línea con faltante, la orden se orienta al estado “Aguardando Piezas” — lectura `[INFERIDA]`).
+
+### RB-021 — Snapshot de líneas `[DERIVADA]`
+Las tablas línea duplican `descripcion`/`precio`/`servicio` del catálogo al crear la línea; editar el catálogo (producto/servicio) **no** reescribe líneas existentes (columnas propias en SP §productos_orden/servicios_orden/items_venta lo exigen). Los totales de documentos históricos permanecen estables.
+
+### RB-022 — Integridad referencial en eliminaciones `[DERIVADA]` `[PENDIENTE OQ-03]`
+CRUD con “eliminar” convive con FKs: eliminar un padre con hijos referenciados se rechaza (L2 `ON DELETE RESTRICT`) con mensaje en español («El registro tiene órdenes asociadas; no puede eliminarse.»). Alternativa en validación: borrado lógico. Sin inventar: SP no define “desactivar” en clientes/productos → no se agrega UI de desactivado salvo que AG-001 lo apruebe.
+
+### RB-023 — Efecto del estado del grupo de permisos `[DERIVADA]`
+Grupo `estado=false`: los usuarios asignados a él pierden todo acceso (menú vacío/denegado) pero mantienen sesión de solo-reinicio o quedan bloqueados — interpretación más simple: **login denegado** al usuario cuyo grupo esté inactivo, hasta reasignación por otro administrador con permisos. SP define `estado` en `permisos` (§FUNCIONALIDADES 11 “desactivar”) sin detalle → `[INFERIDA]` y validable.
+
+### RB-024 — Expiración de usuario `[DERIVADA]`
+`usuarios.fecha_expiracion` superada → login denegado («Su usuario ha expirado; contacte al administrador.»). SP incluye el campo y la pantalla (fecha de expiración) sin efecto explícito; la inferencia más simple y consistente con un sistema de accesos es ese bloqueo. `[INFERIDA]`.
+
+### RB-025 — Vencidos `[DERIVADA]`
+“Detección de vencidos” (SP §Financiero): `pagado=false AND fecha_vencimiento < CURRENT_DATE` (en zona local del taller `[INFERIDA]`) ⇒ movimiento vencido; visible en listado (marca), en filtro (RB-026 “atrasado”) y en Panel (RF-007 “movimientos pendientes” incluye vencidos).
+
+### RB-026 — Situaciones del filtro financiero `[DERIVADA]`
+Mapeo propuesto para los 5 filtros SP (todos/previsto/atrasado/realizado/pendiente):
+| Situación SP | Definición inferida |
+|---|---|
+| realizado | `pagado = true` |
+| atrasado | `pagado = false` y `fecha_vencimiento < hoy` |
+| previsto | `pagado = false` y `fecha_vencimiento > hoy` |
+| pendiente | `pagado = false` (todas las vencidas/vigentes/futuras — vista consolidada) |
+| todos | sin filtro |
+Nota: “pendiente” como superconjunto es la lectura más simple; si AG-001 prefiere partición excluyente (p. ej. pendiente = vence hoy), ajustar solo la definición SQL. **Trazabilidad:** RF-044, RF-046.
+
+### RB-030 — Empresa única `[DERIVADA]`
+`empresa` con registro único (L2: `CHECK (id = 1)` o constraint equivalente; UI sin alta múltiple: solo “crear” la primera vez y “editar” después — SP §FUNCIONALIDADES 16 “Crear, editar datos”). Si existiera fila extra por error, la UI/impresión usa la única válida. **Trazabilidad:** RF-081, RB-005.
+
+---
+
+## 6. Matriz RB → RF → capa dura → prueba
+
+| RB | Capa | RF relacionadas | Prueba mínima |
 |---|---|---|---|
-| Abierta | En_proceso | Técnico asignado, Recepción, Admin | — |
-| En_proceso | Esperando_repuestos | Técnico asignado, Recepción, Admin | solicitud de repuestos |
-| Esperando_repuestos | En_proceso | Recepción, Admin | — |
-| En_proceso | Verificación_QC | Recepción, Admin | — |
-| Verificación_QC | En_proceso | Recepción, Admin | falla QC (reproceso) |
-| Verificación_QC | Lista_entrega | Recepción, Admin | — |
-| En_proceso | Lista_entrega | Recepción, Admin | solo si RB-PARAM `requerir_qc = false` |
-| Lista_entrega | Entregada | Recepción, Admin | RB-016, RB-018, km salida |
-| Cualquier no terminal | Cancelada | Recepción, Admin | **motivo obligatorio** |
-
-- **Aplicación:** L4 `cambiar_estado_ot(id, destino)` valida transición y rol; L1 muestra solo acciones válidas; todo cambio pasa a auditoría (RF-036). Las reservas de RB-006 se liberan automáticamente al llegar a `Entregada`/`Cancelada` (consumidas o devueltas según corresponda).
-- **Mensaje UI:** «Transición no permitida: {origen} → {destino}.»
-- **Verificación:** test parametrizado sobre las 42 parejas ordenadas de estados: las 13 transiciones válidas de la tabla → OK con bitácora; las 29 restantes → rechazo.
-- **Trazabilidad:** RF-017, RF-020, RF-021.
-
-### RB-009 — Horas técnicas `[INFERIDA]`
-- **Enunciado:** cada línea de servicio de una OT no terminal puede registrar horas trabajadas: `0 ≤ horas ≤ 999,99`, con paso 0,1 h. Pueden editarlas el técnico asignado (de sus OT), Recepción y Admin. En OT `Entregada/Cancelada` quedan bloqueadas (RB-008).
-- **Aplicación:** L2 `CHECK (horas BETWEEN 0 AND 999.99)`; L3 RLS por asignación; L1 stepper.
-- **Verificación:** test: −0,1 y 1000 → rechazados; 0,15 → rechazado por paso (o redondeo con aviso, decisión de diseño); técnico no asignado → 403.
-- **Trazabilidad:** RF-019, RF-034. Nivel de detalle (inicio/fin por línea): `[PENDIENTE OQ-06]`.
-
-### RB-016 — Entrega con costo cero `[INFERIDA]`
-- **Enunciado:** una OT no puede pasar a `Entregada` con total = 0 sin que Recepción/Admin escriba una justificación (≥ 10 caracteres) que queda guardada e impresa en el documento (p. ej., garantía sin cargo).
-- **Aplicación:** L4 en el RPC de entrega; L1 diálogo obligatorio.
-- **Verificación:** test: entregar sin líneas y sin justificación → bloqueado; con justificación → OK y visible en RF-037.
-- **Trazabilidad:** RF-021.
-
----
-
-## 5. Agenda / Citas
-
-### RB-011 — Aviso de superposición de citas `[INFERIDA]`
-- **Enunciado:** al guardar una cita, si el mismo vehículo ya tiene una cita `programada/confirmada` que se solapa en fecha/hora, el sistema **avisa sin bloquear** (puede ser ingreso en espera). Si al convertir la cita en OT se violaría RB-004, la conversión sí se bloquea.
-- **Aplicación:** L1 aviso + L4 verificación en conversión.
-- **Mensaje UI:** «Aviso: {placa} ya tiene una cita {fecha} {hora}. Puede guardar igualmente.»
-- **Verificación:** test: citas superpuestas permitidas; conversión con OT activa → rechazada con enlace.
-- **Trazabilidad:** RF-013, RF-016.
-
-### RB-012 — Estados de cita `[INFERIDA]`
-- **Enunciado:** estados `Programada → Confirmada → Atendida | No_Show`; `Programada/Confirmada → Cancelada` con motivo obligatorio. `Atendida` exige que la cita se haya convertido en OT (vínculo `ot_id`). Una cita vencida sin gestión queda `No_Show` al cerrar el día hábil (job L5 con zona local, RNF-C-03).
-- **Aplicación:** L4 + L5; L1 acciones disponibles por estado.
-- **Verificación:** test de transiciones igual que RB-005; `Atendida` sin OT → rechazado.
-- **Trazabilidad:** RF-013, RF-015.
+| RB-001 | L5/proceso | — | Revisión de pipeline de test/seed |
+| RB-002 | L4 | RF-017/018/030/037 | Propiedad: invariante de stock |
+| RB-003 | L4 + índice parcial | RF-028 | Int: doble factura concurrente |
+| RB-004 | L4 + índice parcial | RF-035 | Int: doble factura + doble vínculo |
+| RB-005 | L1/L4 | RF-065/027/036/040 | QA PDF con empresa semilla |
+| RB-006 | L3+L4 | RF-006/009/059–061 | Matriz RLS × código (auto) |
+| RB-007 | L1 | todas las vistas | Unit formateador + QA |
+| RB-008 | L2+L1 | RF-015/024/034 | Unit formateador + CHECK |
+| RB-009 | L2/L4 | RF-067 | Por acción: fila de log presente |
+| RB-010 | L2 CHECK | RF-021 | Unit: valor inválido rechazado |
+| RB-011 | L1/L3 | RF-001/002/055 | No hash en claro; login OK/fallido |
+| RB-012 | L3/L4 | RF-075 | Int: par coincidente/no coincidente |
+| RB-013 | L3 | RF-003/004 | Expiración simulada |
+| RB-014 | L2 | RF-041 | Unit: pagado sin fecha → rechaza |
+| RB-015 | L2 CHECK | RF-071/072/073 | Transiciones válidas/inválidas |
+| RB-016 | L4 | RF-041/047 | Int: categoría tipo erróneo |
+| RB-017 | L4 | RF-022/023/033 | Unit: subtotal recalculado |
+| RB-018 | L4 | RF-024 | Int: total tras cambios de líneas |
+| RB-019 | L2/L4 | RF-034 | Unit: descuento > subtotal |
+| RB-020 | L2 CHECK | RF-017 | Propiedad: stock ≥ 0 siempre |
+| RB-021 | L2 (datos) | RF-022/023/029 | Int: editar catálogo no toca líneas |
+| RB-022 | L2 FK | RF-010/015/019/032/038 | Int: eliminar con hijos → rechazo |
+| RB-023 | L4/RDS | RF-056/059 | Int: grupo inactivo → sin acceso |
+| RB-024 | L4 | RF-057 | Fecha simulada > expiración |
+| RB-025 | L5/consulta | RF-046 | Fechas controladas; marca visible |
+| RB-026 | consulta | RF-044 | Tabla de 5×situaciones con dataset |
+| RB-027 | L4 | RF-028/035 | Int: enlaces coherentes |
+| RB-028 | L2/L4 | RF-067 | 5 campos presentes en cada log |
+| RB-029 | L3/L1 | RF-059–061 | Parser de códigos; UI editor |
+| RB-030 | L2 | RF-081 | Int: segunda fila empresa rechazada |
+| RB-031–036 | L1–L4 | RNF-S-* | Suite seguridad (sección §4) |
 
 ---
 
-## 6. Inventario de repuestos
+## 7. Reglas explícitamente NO incluidas (anti-invención)
 
-### RB-007 — Stock solo vía movimientos `[INFERIDA — crítica]`
-- **Enunciado:** la columna de existencias **nunca** se modifica directamente; todo cambio genera un movimiento tipado (`entrada_compra`, `salida_ot`, `ajuste`, `devolucion`) con cantidad ≠ 0, referencia, usuario y fecha (RF-023). Existe `CHECK (stock >= 0)` como última defensa: un `salida_ot` que daría negativo falla con mensaje claro y ofrece marcar la OT `Esperando_repuestos`. Ajustes con signo negativo que violen `stock ≥ 0` se rechazan.
-- **Aplicación:** L4 `mover_stock(repuesto_id, tipo, cantidad, ref)` (revocar `UPDATE` directo de la columna en L2/L3); L1 botón "quedar en espera".
-- **Verificación:** invariantes: `stock == SUM(movimientos)` para todo repuesto (test de propiedad tras la suite); intento de stock negativo → rechazo + transición sugerida.
-- **Trazabilidad:** RF-023, RF-025. Valoración: costo promedio ponderado en `entrada_compra` (RF-025).
-
-### RB-006 — Reservas `[INFERIDA]`
-- **Enunciado:** `disponible = stock − reservas_activas`. Una reserva (RF-020) no puede exceder el disponible; se libera al alcanzar `Entregada`/`Cancelada` o al retirar la línea. La salida `salida_ot` consume primero la reserva si existe.
-- **Aplicación:** L4 (revisión dentro de la misma transacción, no con lectura previa).
-- **Mensaje UI:** «Disponible insuficiente para {repuesto}: solicitado {n}, disponible {m}.»
-- **Verificación:** test concurrente: dos reservas que sumadas exceden stock → una gana, la otra recibe mensaje; invariante `disponible ≥ 0`.
-- **Trazabilidad:** RF-020, RF-019, RNF-A-02.
-
-### RB-017 — Precio de venta "por definir" `[INFERIDA]`
-- **Enunciado:** un repuesto con `precio_venta = 0` puede existir en catálogo, pero al agregarlo a una OT/cotización el sistema advierte «precio por definir» y **obliga** a fijar un precio > 0 para esa línea; el precio usado queda como snapshot (RB-010) sin alterar el catálogo.
-- **Aplicación:** L1 obligatorio + L4 rechaza guardar líneas de documento con precio ≤ 0 (RB-016 cubre el total cero del documento, no el precio cero de una línea).
-- **Verificación:** test: agregar repuesto con precio 0 sin fijar → no permite guardar; catálogo conserva su precio original.
-- **Trazabilidad:** RF-022, RF-018.
-
----
-
-## 7. Precios, cotizaciones, facturación interna y pagos
-
-### RB-010 — Snapshot de precios `[INFERIDA]`
-- **Enunciado:** cada línea de OT, cotización o documento de cobro guarda copia inmutable de: nombre del ítem, precio unitario, tasa de impuesto y descuento vigentes **al momento de agregarse**. Actualizar catálogo (RF-011), repuestos (RF-022) o parámetros (RF-035) **jamás** recalcula documentos existentes ni OT cerradas; solo afecta a los nuevos.
-- **Aplicación:** L2 (columnas propias de la línea, sin FK viva al precio); L4 al clonar líneas cotización→OT.
-- **Verificación:** test: cambiar precio catálogo → OT previa muestra precio antiguo; aprobar cotización → OT hereda snapshots idénticos.
-- **Trazabilidad:** RF-011, RF-018, RF-026, RF-035.
-
-### RB-015 — Descuentos `[INFERIDA + RECOMENDADA]`
-- **Enunciado:** se permite descuento porcentual o de monto por línea y/o por documento, aplicándose primero los de línea y luego el de documento sobre el subtotal resultante. Reglas duras: ningún descuento puede hacer negativo el subtotal de su línea ni el total del documento (P-03). `[RECOMENDADA]`: descuento de documento > 20 % exige rol Admin (validar umbral con AG-001 — sin respuesta, se implementa como advertencia no bloqueante).
-- **Aplicación:** L4 recalcula totales; L2 `CHECK (total >= 0)`; L1 muestra desglose.
-- **Verificación:** test: descuento > subtotal → rechazado; Admin vs Recepción con descuento 25 % → permitido solo a Admin (o advertencia, según decisión).
-- **Trazabilidad:** RF-018, RF-026, RF-027.
-
-### RB-018 — Un documento de cobro por OT entregada `[INFERIDA]`
-- **Enunciado:** la transición a `Entregada` (RPC L4) crea o vincula **exactamente un** documento de cobro no anulado para esa OT. No se puede entregar sin él, ni entregar dos veces. Si el documento se anula (RB-008), la OT regresa a `Lista_entrega` hasta emitir el nuevo documento vigente.
-- **Aplicación:** L2 `UNIQUE (ot_id) WHERE estado_documento <> 'Anulado'` en documentos de cobro; L4 en `entregar_ot`.
-- **Verificación:** test: doble emisión → violación única; anular → OT editable y reemisión OK; invariante tras anulación = 1 vigente.
-- **Trazabilidad:** RF-021, RF-027, RF-029, RNF-A-02. El documento **no es factura fiscal legal**: `[PENDIENTE OQ-02]` — si se requiere, se reemplaza la política de series y el pie «documento no válido fiscalmente».
-
-### RB-019 — Pagos y saldos `[INFERIDA]`
-- **Enunciado:** cada pago tiene monto > 0; la suma acumulada de pagos de un documento nunca excede su total (el exceso se rechaza con el saldo visible). `saldo = total − Σpagos`; `saldo = 0` ⇒ documento `Pagado`. En anulación de documento (RB-008), los pagos quedan registrados como referencia de devolución manual; nunca se borran.
-- **Aplicación:** L4 en `registrar_pago`; L2 `CHECK (monto > 0)`.
-- **Verificación:** test: pagar de más → rechazado; abonos parciales → saldo decreciente; anular con pagos → bitácora de devolución visible.
-- **Trazabilidad:** RF-028, RF-029. Formas de pago con pasarela: `[PENDIENTE OQ-03]` (MVP = referencia manual).
-
-### RB-020 — Expiración de cotizaciones `[INFERIDA]`
-- **Enunciado:** `vence = fecha_emisión + RB-PARAM.dias_validez_cotizacion` (días naturales, en zona local del taller, RNF-C-03). Vencida la fecha, el job L5 (y toda lectura) marca la cotización `Expirada`. Una cotización expirada **no puede aprobarse**: se recrea desde la OT con precios actuales (RB-010 no se viola porque es un documento nuevo).
-- **Aplicación:** L5 job diario + L4 guarda al aprobar.
-- **Mensaje UI:** «La cotización venció el {fecha}. Cree una nueva cotización con precios vigentes.»
-- **Verificación:** test con fecha simulada +1/+8 días → expiración y bloqueo de aprobación.
-- **Trazabilidad:** RF-026.
-
-### RB-008 — Inmutabilidad y anulación `[INFERIDA — crítica]`
-- **Enunciado:** OT en `Entregada`/`Cancelada`, cotizaciones aprobadas/expiradas y documentos de cobro emitidos **no se editan ni eliminan**. La única corrección permitida es la **anulación**: solo Admin, con motivo obligatorio (≥ 10 caracteres), generando documento negativo vinculado al original (nota de ajuste), que figura como ingreso negativo en reportes (RF-033). El original permanece con estado `Anulado` y todo queda en auditoría (RF-036). La anulación de un documento de cobro revierte la OT según RB-018.
-- **Aplicación:** L3 RLS (sin `UPDATE/DELETE` en documentos cerrados para roles bajos), L4 `anular_documento(id, motivo)`; L1 sin botones de borrado.
-- **Verificación:** test: PUT directo a API sobre documento cerrado con JWT recepcionista → 403; anulación solo Admin; reporte muestra el negativo; borrado físico inexistente.
-- **Trazabilidad:** RF-018 (criterio 2), RF-029, RNF-S-02.
-
----
-
-## 8. RB-PARAM — Parámetros configurables del taller `[INFERIDA]`
-
-Editables solo por Admin (RF-035). Toda edición se audita (RF-036) y **aplica únicamente a documentos/operaciones nuevos** (RB-010).
-
-| Clave | Descripción | Tipo | Default | Validación dura |
-|---|---|---|---|---|
-| `nombre_taller` / `direccion` / `telefono` | Encabezado de documentos | texto | — | no vacío (impresión RF-037) |
-| `logo` | Logo en documentos | imagen Storage | — | ≤ 2 MB, PNG/SVG `[RECOMENDADA]` |
-| `moneda` | Moneda de todos los importes | código | `[PENDIENTE OQ-02]` (sugerido: GTQ) | catálogo ISO-4217 acotado |
-| `tasa_impuesto` | % impuesto sobre ventas | decimal | `[PENDIENTE OQ-02]` | 0–99,00 con 2 decimales |
-| `serie_ot` / `serie_cotizacion` / `serie_factura` | Prefijos de correlativo (RB-013) | texto+padding | `OT-` / `COT-` / `FAC-`, 5 dígitos | `[A-Z0-9]{1,8}` |
-| `dias_validez_cotizacion` | Validez (RB-020) | entero | **7** | 1–90 |
-| `horario_habil` | Inicio/fin por día de semana | horas | 08:00–18:00 L-V, 08:00–13:00 S | inicio < fin; usado por RF-013 |
-| `requerir_qc` | Estado `Verificación_QC` obligatorio en flujo | bool | `true` | cambia RB-005 (transición En_proceso→Lista_entrega) |
-| `capturar_estado_entrada` | Ficha de ingreso RF-010 obligatoria | bool | `true` | km y combustible requeridos al abrir OT |
-| `zona_horaria` | Zona de exhibición y cálculo de "hoy" | IANA | `[PENDIENTE OQ-02]` | lista IANA válida (RNF-C-03) |
-
-- **Verificación de conjunto:** test: cambiar `tasa_impuesto` no altera documento previo; cambiar `serie_ot` → siguiente OT usa serie nueva con secuencia propia.
-- **Trazabilidad:** RF-035, RF-013, RF-021, RF-026, RF-037.
-
----
-
-## 9. Matriz RB → capas → requisitos → tipo de prueba
-
-| RB | Capa dura principal | RF relacionadas | Prueba mínima |
-|---|---|---|---|
-| RB-001 | L2 unique | RF-005 | Int: duplicado normalizado |
-| RB-002 | L4 + L2 FK | RF-005/006 | Int: con/sin referencias |
-| RB-003 | L2 unique parcial a normalizada | RF-008 | Int: variantes de placa |
-| RB-004 | L2 índice único parcial | RF-016 | Conc: doble alta |
-| RB-005 | L4 | RF-017/020/021 | Unit param: 13 válidas + 29 inválidas |
-| RB-006 | L4 | RF-020 | Conc: reservas cruzadas |
-| RB-007 | L4 + L2 CHECK | RF-023 | Propiedad: stock = Σmovimientos |
-| RB-008 | L3 + L4 | RF-018/029 | E2E/Int: anulación solo Admin |
-| RB-009 | L2 CHECK + L3 | RF-019 | Unit: bordes de rango/paso |
-| RB-010 | L2 (datos en línea) | RF-011/018/026/035 | Int: precio vs snapshot |
-| RB-011 | L1 + L4 | RF-013 | Int: conversión con OT activa |
-| RB-012 | L4 + L5 | RF-015 | Unit transiciones + job No_Show |
-| RB-013 | L2 unique + secuencia | RF-016/026/027 | Conc: correlativos únicos |
-| RB-014 | L4 + L2 FK | RF-016 | Unit: cliente≠vehículo |
-| RB-015 | L4 + L2 CHECK | RF-018/027 | Unit: totales y topes |
-| RB-016 | L4 | RF-021 | E2E: entregar costo 0 |
-| RB-017 | L1 + L4 | RF-022/018 | Int: precio 0 en línea |
-| RB-018 | L2 unique parcial + L4 | RF-021/027/029 | Int: 1 documento vigente |
-| RB-019 | L4 + L2 CHECK | RF-028 | Unit: saldos |
-| RB-020 | L5 + L4 | RF-026 | Fechas simuladas |
-| RB-PARAM | L4 + L2 | RF-035 | Int: efectos solo documentos nuevos |
-
----
-
-## 10. Reglas pendientes de validación (escalación AG-001)
-
-| Regla | Depende de | Qué puede cambiar |
-|---|---|---|
-| RB-003, RB-004, RB-011, RB-014 | **OQ-01 (CRÍTICO)** | Si A-01 falla, "placa/vehículo" se re-formaliza por el activo equivalente (bicicleta, equipo eléctrico…); la estructura de regla (unicidad + una OT por activo) se conserva. |
-| RB-001, RB-013, RB-018, RB-PARAM `tasa_impuesto/moneda` | **OQ-02 (CRÍTICO)** | Factura electrónica legal cambiaría RB-013 (series fiscales), RB-018 (emisión certificada) y el pie del documento; requisitos de retención endurecen RB-PARAM/RF-036. |
-| RB-019 (formas de pago) | OQ-03 | Integración de pasarela reemplaza "referencia manual". |
-| RB-PARAM `horario_habil` | OQ-02 | Festivos locales no contemplados en MVP. |
-
-**Ninguna regla de este documento fue presentada como confirmada por el usuario salvo las derivadas del stack/idioma (RNF-U-01, RF-001).** El conjunto RB-001..RB-020 + RB-PARAM es `[INFERIDA]/[RECOMENDADA]` y requiere validación de AG-001 junto con los supuestos A-01..A-04 antes de iniciar cualquier TASK de código.
+Para cumplir “No inventar procesos adicionales” (SP), se documenta lo que este análisis **deliberadamente no agrega**, aunque un sistema similar lo tuviera: facturas fiscales/legalmente vinculantes; notas de crédito/anulaciones automáticas; aprobaciones multinivel; máquinas de estados estrictas de orden (más allá del enum RB-010); “desfacturar”; notificaciones WhatsApp/SMS; portal con pago en línea; multi-empresa/multi-sede; reservas de stock independientes de las líneas; catálogo de categorías de archivo con tabla propia; backup “Respaldo” funcional (solo códigos reservos RB-029). Si AG-001 desea alguno, es un cambio de alcance explícito, no una omisión de este análisis.
