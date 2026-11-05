@@ -146,7 +146,7 @@ export default function Clientes() {
       eliminar={eliminar}
       ver={detalle}
       puedeAgregar={puede(["aCliente"])}
-      puedeEditar={puede(["eCliente"]) || puede(["cCliente"])}
+      puedeEditar={puede(["eCliente"])}
       puedeEliminar={puede(["dCliente"])}
     />
   );

@@ -37,7 +37,6 @@ import { formatoDinero } from "../lib/dinero";
 import { formatoFecha } from "../lib/fechas";
 import type {
   Cliente,
-  DatosEmpresa,
   Empresa,
   ItemVenta,
   OrdenTrabajo,
@@ -195,7 +194,16 @@ function PanelPortal({ onSalir }: { onSalir: () => void }) {
     setError(null);
     try {
       const actualizado = await portalService.actualizarPerfil(idCliente, {
-        nombre_cliente: miCuenta.nombre cliente_split,
+        nombre_cliente: miCuenta.nombre_cliente,
+        sexo: miCuenta.sexo || null,
+        telefono: miCuenta.telefono || null,
+        celular: miCuenta.celular || null,
+        calle: miCuenta.calle || null,
+        numero: miCuenta.numero || null,
+        barrio: miCuenta.barrio || null,
+        ciudad: miCuenta.ciudad || null,
+        estado: miCuenta.estado || null,
+        codigo_postal: miCuenta.codigo_postal || null,
       } as Partial<Cliente>);
       setDatos(actualizado);
       setError(null);
@@ -596,16 +604,19 @@ function PanelPortal({ onSalir }: { onSalir: () => void }) {
 /* -------------------------------------------------------------------------- */
 
 export default function Portal() {
-  const [sesionValida, setSesionValida] = useState(() => portalService.obtenerSesion() !== null);
-  const [, setVersion] = useState(0);
+  const [, refrescar] = useState(0);
+  const [sesion, setSesion] = useState(() => portalService.obtenerSesion());
+
+  useEffect(() => {
+    setSesion(portalService.obtenerSesion());
+  }, []);
 
   const salir = async () => {
     await portalService.cerrar();
-    setSesionValida(false);
-    setVersion((v) => v + 1);
-    window.location.reload();
+    setSesion(null);
+    refrescar((v) => v + 1);
   };
 
-  if (!sesionValida && !portalService.obtenerSesion()) return <AccesoPortal />;
-  return <PanelPortal onSalir={salir} />;
+  if (!sesion) return <AccesoPortal />;
+  return <PanelPortal onSalir={salir} key={sesion.idCliente} />;
 }

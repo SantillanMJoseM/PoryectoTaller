@@ -26,12 +26,8 @@ import { auditoriaService } from "../services";
 import { formatoFecha } from "../lib/fechas";
 import type { LogAuditoria } from "../lib/types";
 
-function comoLog(l: LogAuditoria & Record<string, unknown>): LogAuditoria {
-  return l;
-}
-
 export default function Auditoria() {
-  const { puede, sesion } = useAuth();
+  const { puede } = useAuth();
   const [q, setQ] = useState("");
   const [pagina, setPagina] = useState(1);
   const [datos, setDatos] = useState<{ lista: LogAuditoria[]; total: number; paginas: number } | null>(null);
@@ -79,8 +75,6 @@ export default function Auditoria() {
       setLimpiando(false);
     }
   };
-
-  void sesion;
 
   return (
     <div className="space-y-4">
