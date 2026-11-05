@@ -298,7 +298,7 @@ Convención de objeto: `<id-entidad>/<uuid-v4>-<nombre-sanitizado>`. Se persiste
 3. FK: `ON DELETE RESTRICT` por defecto (RB-022); `ON DELETE CASCADE` solo en tablas línea sin identidad propia: `productos_orden`, `servicios_orden`, `items_venta`, `anexos`, `equipos_orden` (hijos directos del documento padre) `[Inferida]`.
 4. Dinero: `numeric(12,2)` (RB-008); cantidades `numeric(12,2)` (unidades puede ser fraccionario: `unidad` text lo admite) `[Inferida]`.
 5. Fechas: `date` para fechas de negocio (vencimiento, expiración, `fecha_inicial/final`, `fecha_venta`); `timestamptz` para registros (`fecha_registro`, `cola_emails.fecha`); `logs_auditoria.fecha date` + `hora time` según SP (RB-028).
-6. Enums: `text` + `CHECK` con los valores literales de SP (no `TYPE enum` propio para no bloquear renombra-mientos ni `pg_dump` posteriores):
+6. Enums: `text` + `CHECK` con los valores literales de SP (no `TYPE enum` propio para no bloquear renombramientos ni `pg_dump` posteriores):
    - `ordenes_trabajo.estado IN ('Presupuesto','Abierta','En Proceso','Finalizado','Cancelado','Aguardando Piezas')` (RB-010)
    - `movimientos_financieros.tipo IN ('ingreso','egreso')`; `categorias.tipo`, `cuentas.tipo` ídem
    - `cola_emails.estado IN ('pendiente','enviando','enviado','fallido')` (RB-015)
@@ -333,41 +333,272 @@ erDiagram
   MOVIMIENTOS_FINANCIEROS ||--o| VENTAS : "lanzamiento_id"
   MARCAS ||--o{ EQUIPOS : "marca_id"
   EQUIPOS ||--o{ EQUIPOS_ORDEN : "equipo_id"
-  EMPRESA ||..|| EMPRESA : "1 fila (RB-030)"
-  LOGS_AUDITORIA { text usuario text tarea date fecha time hora text ip }
-  COLA_EMAILS { text para text cc text cco text mensaje text estado timestamptz fecha text encabezados }
-  SESIONES { uuid id_sesion uuid usuario_id uuid cliente_id text tipo timestamptz inicio timestamptz expira text ip boolean activa }
-
-  CLIENTES { uuid id_cliente PK text nombre_cliente text sexo bool persona_fisica text documento text telefono text celular text correo timestamptz fecha_registro text calle text numero text barrio text ciudad text estado text codigo_postal }
-  PRODUCTOS { uuid id_producto PK text descripcion text unidad numeric precio_compra numeric precio_venta numeric stock numeric stock_minimo bool salida bool entrada }
-  SERVICIOS { uuid id_servicio PK text nombre text descripcion numeric precio }
-  ORDENES_TRABAJO { uuid id_orden PK date fecha_inicial date fecha_final text garantia text descripcion_producto text defecto text estado text observaciones text laudo_tecnico numeric valor_total uuid cliente_id FK uuid usuario_id FK uuid lanzamiento_id FK bool facturado uuid garantia_id FK }
-  PRODUCTOS_ORDEN { uuid id_producto_orden PK numeric cantidad text descripcion numeric precio uuid orden_id FK uuid producto_id FK numeric subtotal }
-  SERVICIOS_ORDEN { uuid id_servicio_orden PK text servicio numeric cantidad numeric precio uuid orden_id FK uuid servicio_id FK numeric subtotal }
-  VENTAS { uuid id_venta PK date fecha_venta numeric valor_total numeric descuento bool facturado uuid cliente_id FK uuid usuario_id FK uuid lanzamiento_id FK }
-  ITEMS_VENTA { uuid id_item_venta PK numeric cantidad text descripcion numeric precio uuid venta_id FK uuid producto_id FK numeric subtotal }
-  GARANTIAS { uuid id_garantia PK date fecha_garantia text referencia text texto_garantia uuid usuario_id FK }
-  MOVIMIENTOS_FINANCIEROS { uuid id_movimiento PK text descripcion numeric valor date fecha_vencimiento date fecha_pago bool pagado text cliente_proveedor text forma_pago text tipo text anexo uuid cliente_id FK uuid categoria_id FK uuid cuenta_id FK uuid venta_id FK }
-  CATEGORIAS { uuid id_categoria PK text categoria timestamptz fecha_registro bool estado text tipo }
-  CUENTAS { uuid id_cuenta PK text cuenta text banco text numero numeric saldo timestamptz fecha_registro bool estado text tipo }
-  ANEXOS { uuid id_anexo PK text anexo text miniatura text url text ruta uuid orden_id FK }
-  DOCUMENTOS { uuid id_documento PK text documento text descripcion text archivo text ruta text url timestamptz fecha_registro text categoria text tipo bigint tamanio }
-  MARCAS { uuid id_marca PK text marca timestamptz fecha_registro bool estado }
-  EQUIPOS { uuid id_equipo PK text equipo text numero_serie text modelo text color text descripcion text tension text potencia text voltaje date fecha_fabricacion uuid marca_id FK uuid cliente_id FK }
-  EQUIPOS_ORDEN { uuid id_equipo_orden PK text defecto_declarado text defecto_encontrado text solucion uuid equipo_id FK uuid orden_id FK }
-  USUARIOS { uuid id_usuario PK text nombre text rg text cpf text calle text numero text barrio text ciudad text estado text correo text telefono text celular bool estado_usuario timestamptz fecha_registro uuid permiso_id FK date fecha_expiracion }
-  PERMISOS { uuid id_permiso PK text nombre jsonb permisos bool estado date fecha }
-  EMPRESA { uuid id PK text nombre text cnpj text ie text calle text numero text barrio text ciudad text provincia text telefono text correo text url_logo }
+  USUARIOS ||--o{ SESIONES : "usuario_id"
+  CLIENTES ||--o{ SESIONES : "cliente_id"
+  LOGS_AUDITORIA {
+    uuid id_log PK
+    text usuario
+    text tarea
+    date fecha
+    time hora
+    text ip
+  }
+  COLA_EMAILS {
+    uuid id PK
+    text para
+    text cc
+    text cco
+    text mensaje
+    text estado
+    timestamptz fecha
+    text encabezados
+  }
+  SESIONES {
+    uuid id_sesion PK
+    uuid usuario_id FK
+    uuid cliente_id FK
+    text tipo
+    timestamptz inicio_sesion
+    timestamptz expiracion
+    text ip
+    boolean activa
+  }
+  CLIENTES {
+    uuid id_cliente PK
+    text nombre_cliente
+    text sexo
+    boolean persona_fisica
+    text documento
+    text telefono
+    text celular
+    text correo
+    timestamptz fecha_registro
+    text calle
+    text numero
+    text barrio
+    text ciudad
+    text estado
+    text codigo_postal
+  }
+  PRODUCTOS {
+    uuid id_producto PK
+    text descripcion
+    text unidad
+    numeric precio_compra
+    numeric precio_venta
+    numeric stock
+    numeric stock_minimo
+    boolean salida
+    boolean entrada
+  }
+  SERVICIOS {
+    uuid id_servicio PK
+    text nombre
+    text descripcion
+    numeric precio
+  }
+  ORDENES_TRABAJO {
+    uuid id_orden PK
+    date fecha_inicial
+    date fecha_final
+    text garantia
+    text descripcion_producto
+    text defecto
+    text estado
+    text observaciones
+    text laudo_tecnico
+    numeric valor_total
+    uuid cliente_id FK
+    uuid usuario_id FK
+    uuid lanzamiento_id FK
+    boolean facturado
+    uuid garantia_id FK
+  }
+  PRODUCTOS_ORDEN {
+    uuid id_producto_orden PK
+    numeric cantidad
+    text descripcion
+    numeric precio
+    uuid orden_id FK
+    uuid producto_id FK
+    numeric subtotal
+  }
+  SERVICIOS_ORDEN {
+    uuid id_servicio_orden PK
+    text servicio
+    numeric cantidad
+    numeric precio
+    uuid orden_id FK
+    uuid servicio_id FK
+    numeric subtotal
+  }
+  VENTAS {
+    uuid id_venta PK
+    date fecha_venta
+    numeric valor_total
+    numeric descuento
+    boolean facturado
+    uuid cliente_id FK
+    uuid usuario_id FK
+    uuid lanzamiento_id FK
+  }
+  ITEMS_VENTA {
+    uuid id_item_venta PK
+    numeric cantidad
+    text descripcion
+    numeric precio
+    uuid venta_id FK
+    uuid producto_id FK
+    numeric subtotal
+  }
+  GARANTIAS {
+    uuid id_garantia PK
+    date fecha_garantia
+    text referencia
+    text texto_garantia
+    uuid usuario_id FK
+  }
+  MOVIMIENTOS_FINANCIEROS {
+    uuid id_movimiento PK
+    text descripcion
+    numeric valor
+    date fecha_vencimiento
+    date fecha_pago
+    boolean pagado
+    text cliente_proveedor
+    text forma_pago
+    text tipo
+    text anexo
+    uuid cliente_id FK
+    uuid categoria_id FK
+    uuid cuenta_id FK
+    uuid venta_id FK
+  }
+  CATEGORIAS {
+    uuid id_categoria PK
+    text categoria
+    timestamptz fecha_registro
+    boolean estado
+    text tipo
+  }
+  CUENTAS {
+    uuid id_cuenta PK
+    text cuenta
+    text banco
+    text numero
+    numeric saldo
+    timestamptz fecha_registro
+    boolean estado
+    text tipo
+  }
+  ANEXOS {
+    uuid id_anexo PK
+    text anexo
+    text miniatura
+    text url
+    text ruta
+    uuid orden_id FK
+  }
+  DOCUMENTOS {
+    uuid id_documento PK
+    text documento
+    text descripcion
+    text archivo
+    text ruta
+    text url
+    timestamptz fecha_registro
+    text categoria
+    text tipo
+    bigint tamanio
+  }
+  MARCAS {
+    uuid id_marca PK
+    text marca
+    timestamptz fecha_registro
+    boolean estado
+  }
+  EQUIPOS {
+    uuid id_equipo PK
+    text equipo
+    text numero_serie
+    text modelo
+    text color
+    text descripcion
+    text tension
+    text potencia
+    text voltaje
+    date fecha_fabricacion
+    uuid marca_id FK
+    uuid cliente_id FK
+  }
+  EQUIPOS_ORDEN {
+    uuid id_equipo_orden PK
+    text defecto_declarado
+    text defecto_encontrado
+    text solucion
+    uuid equipo_id FK
+    uuid orden_id FK
+  }
+  USUARIOS {
+    uuid id_usuario PK
+    text nombre
+    text rg
+    text cpf
+    text calle
+    text numero
+    text barrio
+    text ciudad
+    text estado
+    text correo
+    text telefono
+    text celular
+    boolean estado_usuario
+    timestamptz fecha_registro
+    uuid permiso_id FK
+    date fecha_expiracion
+  }
+  PERMISOS {
+    uuid id_permiso PK
+    text nombre
+    jsonb permisos
+    boolean estado
+    date fecha
+  }
+  EMPRESA {
+    uuid id PK
+    text nombre
+    text cnpj
+    text ie
+    text calle
+    text numero
+    text barrio
+    text ciudad
+    text provincia
+    text telefono
+    text correo
+    text url_logo
+  }
 ```
 
-Relaciones verificadas contra SP §MODELO DE DATOS: **23 tablas, 0 añadidas** (`sesiones` es la tabla 23 exigida por SP), **0 eliminadas**, **0 renombradas** en el plano lógico.
+**Verificación contra SP §MODELO DE DATOS:** 23 tablas representadas (las 22 de negocio + `sesiones`, la número 23 exigida por SP) — **0 añadidas, 0 eliminadas, 0 renombradas** en el plano lógico. Diferencias físicas documentadas: `usuarios.estado_usuario` (colisión de `estado`, ADR-017), `documentos.tamanio` (sin `ñ`), `usuarios.contraseña` materializada en `auth.users.encrypted_password` (ADR-003), tipos y `CHECK` fijados en `0002_schema_fixes.sql`.
+
+**Restricciones que no son arcos FK en el diagrama**
+
+| Caso | Mecanismo | Regla |
+|---|---|---|
+| `empresa` con una sola fila | trigger `tg_empresa_unica` (rechaza 2ª fila) | RB-030, RF-081 |
+| Vínculo 1:1 documento ↔ movimiento | índice parcial único sobre `lanzamiento_id` | RB-003/004/027 |
+| `clientes` → `garantias` (RF-013) | sin FK directa: se obtiene vía `ordenes_trabajo.garantia_id` | `[Inferida]` (FUNCIONAL_REQUIREMENTS §4 nota) |
+| `documentos.categoria`/`tipo` | texto con sugerencias (`SELECT DISTINCT`), **no** FK a `categorias` | `[Inferida]`, E-04 |
+| `movimientos_financieros.cliente_proveedor` | texto de SP que convive con `cliente_id` opcional | RF-042 |
+| `anexos`/`documentos`/`movimientos.anexo` | `ruta` autoritativa (bucket privado) + `url` firmada | ADR-013 |
 
 ### 7.3 Constraints, índices y vistas `[Inferida — RNF-E-02]`
 
 | Tipo | Artefacto | Regla/RF |
 |---|---|---|
 | UNIQUE | `clientes(documento) WHERE documento IS NOT NULL`; `usuarios(correo)`; `clientes(correo, documento)` (par de acceso al portal, sin duplicados: RB-012 `[Inferida]`) | RF-054, RF-075 |
-| CHECK | `productos CHECK (stock >= 0 AND stock_minimo >= 0 AND precio_compra >= 0 AND precio_venta >= 0)`; `movimientos CHECK (valor > 0)`; `ventas CHECK (descuento >= 0 AND valor_total >= 0)`; `pagado = true → fecha_pago IS NOT NULL`; `lineas CHECK (cantidad > 0 AND precio >= 0)`; `empresa CHECK (id = (SELECT id FROM empresa LIMIT 1))` → implementado como trigger `empresa_unica` (RB-030) | RB-008/014/019/020/030 |
+| CHECK | `productos CHECK (stock >= 0 AND stock_minimo >= 0 AND precio_compra >= 0 AND precio_venta >= 0)`; `movimientos CHECK (valor > 0)`; `ventas CHECK (descuento >= 0 AND valor_total >= 0)`; `CHECK (pagado IS FALSE OR fecha_pago IS NOT NULL)` (RB-014); `CHECK (cantidad > 0 AND precio >= 0)` en las tres tablas línea; unicidad de `empresa` (no expresable como CHECK entre filas) → trigger `tg_empresa_unica` (RB-030) | RB-008/014/019/020/030 |
 | Índice parcial | `CREATE UNIQUE INDEX orden_lanzamiento_uno ON ordenes_trabajo(lanzamiento_id) WHERE lanzamiento_id IS NOT NULL`; ídem ventas | RB-003/004 |
 | Búsqueda | `clientes`: trigram/btree en `lower(nombre_cliente)`, `documento`, `lower(correo)`; `productos/servicios/garantias`: `lower(descripcion|nombre|referencia)` | RF-011, RF-029, RNF-U-04 |
 | Filtros | `movimientos(fecha_vencimiento, pagado, tipo, categoria_id, cuenta_id)`; `ordenes(estado, fecha_inicial, cliente_id, facturado)`; `ventas(fecha_venta, cliente_id)`; `logs_auditoria(fecha, usuario)`; `cola_emails(estado, fecha)` | RF-043/044/064, RF-007, RF-068 |
@@ -470,22 +701,31 @@ public.tiene_permiso(codigo text)  -- existe fila: usuarios ⋈ permisos con est
 Plantilla de política por tabla (ejemplo `clientes`, RF-010/RF-013/RF-079/RB-031/RB-032):
 
 ```sql
+-- helpers: SECURITY DEFINER con SET search_path = public, pg_temp
+-- (al ser definer, leen usuarios/permisos sin recursión de RLS: el propietario de tabla elude RLS)
 create policy clientes_select on clientes for select to authenticated using (
      (es_administrador() and tiene_permiso('vCliente'))
   or (es_cliente() and id_cliente = cliente_actual())
 );
-create policy clientes_insert on clientes for insert to authenticated with check (es_administrador() and tiene_permiso('aCliente'));
+create policy clientes_insert on clientes for insert to authenticated
+  with check (es_administrador() and tiene_permiso('aCliente'));
 create policy clientes_update on clientes for update to authenticated using (
      (es_administrador() and tiene_permiso('eCliente'))
-  or (es_cliente() and id_cliente = cliente_actual() and row (correo, documento) =
-      (select row(correo, documento) from clientes c where c.id_cliente = cliente_actual()))
-) with check (es_administrador() or id_cliente = cliente_actual());
-create policy clientes_delete on clientes for delete to authenticated using (es_administrador() and tiene_permiso('dCliente'));
+  or (es_cliente() and id_cliente = cliente_actual())
+) with check (
+     (es_administrador() and tiene_permiso('eCliente'))
+  or (es_cliente() and id_cliente = cliente_actual())
+);
+create policy clientes_delete on clientes for delete to authenticated
+  using (es_administrador() and tiene_permiso('dCliente'));
 ```
+
+Las políticas **no** subconsultan la propia tabla (evita recursión de RLS y costos). La inmutabilidad de las credenciales del portal (`correo`, `documento`) se garantiza con el trigger `tg_cliente_no_credenciales` (RB-012/RF-079/E-05): si `es_cliente()` y cambia alguno de esos campos, `RAISE`. Las políticas de las otras 22 tablas siguen la misma plantilla (ramas `es_administrador()` + `tiene_permiso('<act><Módulo>')` y, donde corresponde, rama `es_cliente()` acotada a `cliente_id = cliente_actual()`).
 
 - **Todas las 23 tablas** reciben políticas (RNF-S-02 exige RLS activado sobre las 23). `logs_auditoria` y `cola_emails`: `select` admin con `vAuditoria`/`vEmail`; `insert` solo por trigger/RPC (definer); `delete` con `dAuditoria`/`dEmail`.
 - `sesiones`: `select` solo propio + admin `vUsuario`; `insert/update` solo funciones definer y EF.
-- Escalada de costo: `tiene_permiso` se evalúa en el `jwt` → se cachea el set de códigos en `auth.users.raw_app_meta_data.permisos` al iniciar sesión y al cambiar el grupo (EF `admin-usuarios` / `permisos_guardar` propagan). Así RLS es O(1) por consulta y se cumple RNF-P-01 (RB-006/RF-006 verificados con matriz automatizada).
+- Órdenes/ventas/anexos leídos por el portal: políticas por rama `es_cliente()` con `cliente_id = cliente_actual()` (columna propia o, en las tablas línea, EXISTS sobre el documento padre evaluado dentro de una función definer `es_cliente_duenio_orden(id)` para no recursar RLS).
+- Escalada de costo: el set de códigos se cachea en `auth.users.raw_app_meta_data.permisos` al iniciar sesión y al cambiar el grupo (EF `admin-usuarios` / `permisos_guardar` propagan); `tiene_permiso` lee el claim y solo cae a tabla si falta. Así RLS es O(1) por consulta (RNF-P-01) y RB-006/RF-006 se verifican con la matriz automatizada de RLS.
 
 ### 9.3 Conjunto mínimo auditado (lista cerrada de "acciones relevantes")
 
@@ -508,12 +748,12 @@ sequenceDiagram
   L->>AU: signInWithPassword
   AU->>DB: verifica hash bcrypt / estado_usuario / fecha_expiracion (trigger on_login)
   alt usuario inactivo o vencido o grupo sin estado=true
-    AU-->>L: error -> mensaje en español (RB-023/RB-024) + auditoría
+    AU-->>L: error → mensaje en español (RB-023/RB-024) + auditoría
   else ok
-    AU-->>A: JWT (rol, usuario_id, permisos[])
+    AU-->>A: JWT (rol, usuario_id, permisos)
     A->>DB: auth_perfil()
     DB-->>A: perfil + códigos + empresa
-    A->>U: AdminLayout con menú filtrado por v<Módulo>
+    A->>U: AdminLayout con menú filtrado por códigos v«Módulo»
   end
 ```
 
@@ -525,17 +765,17 @@ sequenceDiagram
   participant R as ordenes.repositorio
   participant RPC as RPC L4
   participant DB as Postgres
-  V->>V: autocompletado (busqueda_productos) -> snapshot nombre/precio
+  V->>V: autocompletado (busqueda_productos) → snapshot nombre/precio
   V->>R: agregarProducto(orden, producto, cantidad, precio)
   R->>RPC: orden_agregar_producto(...)
-  RPC->>DB: LOCK productos FOR UPDATE; CHECK stock >= cantidad (E-01)
+  RPC->>DB: LOCK productos FOR UPDATE · CHECK stock >= cantidad (E-01)
   RPC->>DB: INSERT productos_orden (subtotal = round(cantidad*precio,2))
   RPC->>DB: UPDATE productos SET stock = stock - cantidad (GUC permitido)
-  RPC->>DB: UPDATE ordenes_trabajo SET valor_total = (Σ productos + Σ servicios)
+  RPC->>DB: UPDATE ordenes_trabajo SET valor_total = Σ productos + Σ servicios
   RPC->>DB: INSERT logs_auditoria (usuario, tarea, fecha, hora, ip)
   RPC-->>R: ok (nuevo total, stock actual)
-  R-->>V: invalidación de ['ordenes',id], ['productos'], ['panel']
-  V->>V: si stock < stock_minimo -> Badge "Stock bajo" (RF-016)
+  R-->>V: invalidación de claves orden:id · productos · panel
+  V->>V: si stock por debajo de stock_minimo → Badge «Stock bajo» (RF-016)
 ```
 
 ### 10.3 Facturar orden (RF-028, RB-003/027) — y análogo para venta (RF-035, RB-004)
@@ -579,7 +819,7 @@ sequenceDiagram
   else fallo
     EF->>Q: estado='fallido', intentos+1 (en encabezados)
   end
-  Note over EF,Q: RB-015 transiciones válidas; RNF-A-02 el fallo no rompe el negocio
+  Note over EF,Q: RB-015 transiciones válidas · RNF-A-02 el fallo no rompe el negocio
 ```
 
 ### 10.5 Reporte PDF (RF-062…066, RB-005)
@@ -590,18 +830,23 @@ sequenceDiagram
   participant S as servicios/reporte
   participant RPC as reporte_obtener (L4)
   participant PDF as shared/lib/pdf
-  V->>S: familia + modo (rápido|personalizado) + filtros (fecha/precio/stock, estado, cliente)
+  V->>S: familia + modo (rápido o personalizado) + filtros (fecha/precio/stock, estado, cliente)
   loop páginas de 200 filas
     S->>RPC: reporte_obtener(familia, filtros, pagina)
     RPC-->>S: filas + total_count
   end
-  S->>PDF: definicion{encabezado=empresa+logo, columnas es, filas, pie}
-  PDF-->>V: Blob -> vista previa en iframe y botón Descargar
+  S->>PDF: definicion con encabezado=empresa+logo, columnas, filas, pie
+  PDF-->>V: Blob → vista previa en iframe y botón Descargar
 ```
 
 ### 10.6 Carga de anexo de orden (RF-025, RF-050)
 
-`seleccionar archivo → validar tipo/tamaño → thumbnail canvas → upload bucket `anexos-orden/<id_orden>/` → INSERT anexos(anexo, miniatura, ruta, url=firma temporal) → auditoría → refresh ficha` (RF-052 descarga con URL firmada regenerada).
+1. El usuario selecciona el archivo en `SubirArchivo`; la UI valida tipo y tamaño (L1).
+2. Se genera la miniatura con `<canvas>` (solo imágenes, máx. 256 px).
+3. Subida a Storage: `anexos-orden/<id_orden>/<uuid>-<nombre-sanitizado>` y su `.thumb.webp`.
+4. `INSERT anexos(anexo, miniatura, url, ruta, orden_id)` con `ruta` autoritativa y `url` firmada de 60 min.
+5. `auditar('Adjuntar archivo a orden …')` (RB-009) e invalidación de la ficha.
+6. Descarga (RF-052): se firma una URL nueva al momento (nunca se usa la `url` persistida vieja).
 
 ---
 
