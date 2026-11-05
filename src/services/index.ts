@@ -21,6 +21,7 @@ import { autenticacionService, sesionesTabla, type SesionAdmin } from "./autenti
 import { reportesService, type TipoReporte, type FiltrosReporte, type Reporte, type Columna } from "./reportes";
 import { auditoriaService } from "./auditoria";
 import { emailsService } from "./emails";
+import { emailQueueService, FN_ENVIAR_EMAIL, AUTOPROCESO_ACTIVADO } from "./emailQueue";
 import { empresaService, cabeceraEmpresa } from "./empresa";
 import { panelService, ACCESOS_RAPIDOS, type ResumenPanel } from "./panel";
 import { portalService, type SesionPortal } from "./portal";
@@ -43,6 +44,9 @@ export {
   reportesService,
   auditoriaService,
   emailsService,
+  emailQueueService,
+  FN_ENVIAR_EMAIL,
+  AUTOPROCESO_ACTIVADO,
   empresaService,
   cabeceraEmpresa,
   panelService,

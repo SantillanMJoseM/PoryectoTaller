@@ -12,7 +12,7 @@ describe("dinero (regla: valores con 2 decimales)", () => {
   it("redondea a 2 decimales sin error binario", () => {
     expect(redondear(0.1 + 0.2)).toBe(0.3);
     expect(redondear(123.455)).toBe(123.46);
-    expect(redondear(Math.round(10.999 * 100) / 100 * 1000)).toBe(1099.9);
+    expect(redondear(11000)).toBe(11000);
   });
 
   it("calcula subtotales cantidad × precio", () => {
@@ -38,7 +38,7 @@ describe("dinero (regla: valores con 2 decimales)", () => {
   });
 
   it("parse de montos del usuario acepta coma decimal y rechaza basura", () => {
-    expect(parseMonto("1.234,56")).toBe(1.234);
+    expect(parseMonto("1.234,56")).toBe(1234.56);
     expect(parseMonto("10,50")).toBe(10.5);
     expect(parseMonto("")).toBe(0);
     expect(parseMonto("abc")).toBe(0);

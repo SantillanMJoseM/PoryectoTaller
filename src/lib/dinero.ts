@@ -7,11 +7,14 @@
 // de que el resultado live siempre coincide con el almacenado.
 // ============================================================================
 
-/** Redondea un número a 2 decimales (mitad arriba, como round() de Postgres
- *  para valores positivos). Elimina el error binario típico (0.1 + 0.2). */
+/** Redondea a 2 decimales con desempate hacia arriba, como round(x,2) de
+ *  Postgres. La minúscula tolerancia corrige el sesgo binario de valores como
+ *  123.455 (en binario 12345.4999…), de modo que el valor en pantalla
+ *  coincide siempre con el almacenado. */
 export function redondear(valor: number): number {
   if (!Number.isFinite(valor)) return 0;
-  return Math.round((valor + Number.EPSILON) * 100) / 100;
+  const escalado = valor * 100;
+  return Math.round(escalado + 1e-6) / 100;
 }
 
 /** Subtotal de una línea: cantidad × precio, redondeado a 2 decimales. */
@@ -34,11 +37,16 @@ export function descuentoMaximo(lineas: { cantidad: number; precio: number }[]):
   return redondear(bruto);
 }
 
-/** Análisis de un monto escrito por el usuario: acepta coma decimal. */
+/** Análisis de un monto escrito por el usuario: acepta coma decimal
+ *  («10,50») y separador de miles con puntos («1.234,56»). */
 export function parseMonto(texto: string | number | null | undefined): number {
   if (typeof texto === "number") return redondear(texto);
   if (!texto) return 0;
-  const limpio = String(texto).trim().replace(/\s/g, "").replace(",", ".");
+  let limpio = String(texto).trim().replace(/\s/g, "");
+  if (limpio.includes(",")) {
+    // coma decimal → quitar puntos de miles y convertir coma en punto
+    limpio = limpio.replace(/\./g, "").replace(",", ".");
+  }
   const n = Number(limpio);
   return Number.isFinite(n) ? redondear(n) : 0;
 }
