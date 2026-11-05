@@ -64,6 +64,7 @@ Instructions:
 - Work only in the current directory: {project['repo_path']}
 - Do not read or write files outside this directory (except reading factory agent defs is okay).
 - Create all deliverables as files.
+- You MUST use the write/edit tools to actually create or modify files. Do not only describe them.
 - For analysis/design tasks, write markdown under docs/.
 - For code tasks, write runnable code.
 - Run available tests if applicable (npm/vitest) but do not hang.
