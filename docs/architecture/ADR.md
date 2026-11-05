@@ -114,7 +114,7 @@
 2. Al coincidir, la EF asegura una identidad de portal (`auth.users`) con `app_metadata = {rol:'cliente', cliente_id}` — email interno derivado (`portal+<id_cliente>@taller.local`) para no chocar con usos administrativos del mismo correo — y emite la sesión mediante `admin.generateLink` + `verifyOtp`, devolviendo `access_token`/`refresh_token` al SPA.
 3. RLS separa reinos: ninguna política de tabla administrativa incluye la rama `es_cliente()` salvo las de lectura/escritura de los propios datos del cliente (`clientes`, `ordenes_trabajo`, `ventas`, `anexos`, `garantias`, `empresa` para encabezado de PDF).
 4. Documentos impresos del portal se obtienen por RPC acotadas (`portal_detalle_orden`, `portal_detalle_venta`) que verifican `cliente_id = cliente_actual()` dentro de la función.
-5. Edición de cuenta excluye `correo` y `documento` (E-05, RF-079).
+5. Edición de cuenta excluye `correo` y `documento` (E-05, RF-079), reforzado por el trigger `tg_cliente_no_credenciales` (rechaza el cambio si la sesión es de cliente) para no depender de la UI.
 
 **Alternativas descartadas.**
 - *Rol `anon` + "sesión" en `localStorage` sin JWT*: imposible de hacer cumplir en RLS; violaría RNF-S-02/S-03. Rechazado.
@@ -165,7 +165,7 @@ sesiones(id_sesion uuid PK, -- = identificador de sesión de Auth
 
 **Decisión.**
 1. `permisos.permisos` en **JSONB** con array de códigos: `["aCliente","vOrden","eOrden"]`. Permite contención (`?`, `@>`) sin `LIKE` y sin tabla intermedia nueva (SP no la define).
-2. Función `public.tiene_permiso(codigo)` (`STABLE`, `SECURITY DEFINER`, `search_path` fijado) que resuelve usuario → grupo → códigos, exigiendo `usuarios.estado_usuario`, `fecha_expiracion` válida y `permisos.estado = true` (RB-023).
+2. Función `public.tiene_permiso(codigo)` (`STABLE`, `SECURITY DEFINER`, `search_path` fijado) que resuelve usuario → grupo → códigos, exigiendo `usuarios.estado_usuario`, `fecha_expiracion` válida y `permisos.estado = true` (RB-023). Al ser `DEFINER` y propiedad del dueño de las tablas, eluye RLS y **evita recursión** dentro de las políticas de `usuarios`/`permisos`; las políticas no subconsultan su propia tabla.
 3. Cacheo en el JWT: al iniciar sesión se escribe `app_metadata.permisos = [códigos]`; `tiene_permiso` lee el claim si existe y, si falta o está vacío, cae a la consulta a tabla. `permisos_guardar()`/`admin-usuarios` propagan el cambio a las identidades del grupo (sesiones nuevas y, para caducidad corta, re-evaluación en el próximo refresh).
 4. Aplicación triple: **menú/botón** (UI), **RLS** por tabla/acción, **RPC** L4 (`if not tiene_permiso('eOrden') then raise`). Un único registro `shared/domain/permisos.ts` define la matriz código↔módulo↣etiqueta en español; la pantalla Permisos se genera desde ese registro.
 5. Códigos del módulo **Respaldo** quedan visibles en el editor y **sin acción** en el sistema (no se inventa pantalla), conforme RF-060 CA3/E-08.

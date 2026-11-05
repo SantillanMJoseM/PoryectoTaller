@@ -9,7 +9,7 @@
 | Versión | 1.0 |
 | Fuente de verdad | `docs/requirements/SOURCE_PROMPT.md` (SP) |
 | Insumos | `FUNCTIONAL_REQUIREMENTS.md` v2.0 (RF-001…RF-082), `BUSINESS_RULES.md` v2.0 (RB-001…RB-036), `NON_FUNCTIONAL_REQUIREMENTS.md` v2.0 (RNF-*), `USER_STORIES.md` v2.0 (HU-001…HU-048) |
-| Estado | **Propuesta de arquitectura completa; lista para revisión de AG-001/AG-004.** 7 puntos escalados (§16). Ninguno bloquea el inicio de la capa de datos, salvo E-01 (stock) y E-02 (proveedor de email), que bloquean los módulos Productos/Órdenes/Ventas y Cola de emails respectivamente. |
+| Estado | **Propuesta de arquitectura completa; lista para revisión de AG-001/AG-004.** 4 puntos escalados y 5 decisiones propuestas (§16). Ninguno bloquea el inicio de la capa de datos, salvo E-01 (stock), E-02 (proveedor de email) y E-09 (correcciones obligatorias de la migración actual). |
 | Stack obligatorio | React + TypeScript + Tailwind CSS + shadcn/ui + Supabase (PostgreSQL, Auth, Storage, RLS) `[CONFIRMADA — SP §STACK]` |
 
 ---
@@ -958,7 +958,7 @@ Ninguna de estas correcciones agrega módulos, tablas de negocio ni reglas fuera
 | **E-02** | OQ-01 (proveedor de email) | Arquitectura agnóstica: EF `cola-emails-procesar` detrás de un adaptador `Mailer` (SMTP o Resend). Elección del proveedor = variable de entorno del proyecto. Sin proveedor, la cola funciona en modo simulado (estado `fallido` con `ultimo_error='proveedor no configurado'`). | **[Escalado]** — no bloquea el resto |
 | **E-03** | OQ-03 (eliminaciones) | **RESTRICT** con mensaje en español (RB-022). No se agrega borrado lógico para maestros que no tienen columna `estado` en SP (clientes, productos, servicios, órdenes, ventas, garantías, documentos); sí se usa `estado` donde SP lo define (usuarios, permisos, categorias, cuentas, marcas). | Propuesto, consistente con SP |
 | **E-04** | OQ-02 (equipos/marcas y vocabularios de archivos) | Gestionados como **sub-recursos dentro de módulos existentes**: pestaña "Equipos" en la ficha de Cliente (alta de marca en línea con selector `marcas.estado`), pestaña "Equipos" en la orden (RF-031), y `documentos.categoria`/`tipo` como texto libre con sugerencias derivadas de `SELECT DISTINCT` (sin tabla nueva). | Propuesto, sin inventar módulos |
-| **E-05** | OQ-05 (portal: editar credenciales) | El cliente **no** puede editar `correo` ni `documento` (política RLS + RPC `cliente_actualizar_cuenta` los rechaza). Mensaje: «Para cambiar su correo o documento, contacte al taller.» | Propuesto |
+| **E-05** | OQ-05 (portal: editar credenciales) | El cliente **no** puede editar `correo` ni `documento`: trigger `tg_cliente_no_credenciales` (rechaza el cambio en sesión de cliente) + RPC `cliente_actualizar_cuenta`. Mensaje: «Para cambiar su correo o documento, contacte al taller.» | Propuesto |
 | **E-06** | RB-008/RNF-C-03 (moneda y zona) | Símbolo por defecto **R$** (el modelo SP es brasileño: CNPJ/IE/CPF/RG) en una única constante `MONEDA` de `shared/lib/formato.ts`; zona `America/Sao_Paulo` para "hoy" y para `logs_auditoria.fecha/hora`. Etiquetas UI en español (RNF-U-01) sin mezclar locale en el formateo (dd/mm/aaaa manual, no `Intl` con locale). | **[Escalado]** numérico, bajo |
 | **E-07** | OQ-04 (semántica de `salida`/`entrada`, `garantia`) | `productos.salida = true` habilita el producto como línea de orden/venta (validado en L4); `productos.entrada = true` lo habilita como insumo recibible (sin flujo de compra propio: solo informativo). `ordenes_trabajo.garantia` (text) = condición de garantía declarada al recibir; `garantia_id` = término del catálogo `garantias`. | Propuesto |
 | **E-08** | OQ-06 (tabla `sesiones`, códigos `Respaldo`) | `public.sesiones` escrita por EF/RPC al login/logout + purga por cron; no duplica los tokens de Auth: guarda `id_sesion` (uuid de la sesión de Auth), tipo, sujeto, expiración, IP y `activa`. Los códigos del módulo **Respaldo** quedan disponibles en el editor de permisos **sin acción alguna** en la UI (no se inventa pantalla), como recomienda RF-060 CA3. | Propuesto |
@@ -986,7 +986,7 @@ Matriz completa en `COMPONENT_DIAGRAM.md` §7. Resumen por módulo (nombre SP co
 | 10 | Archivos/Documentos | documentos | CRUD + signed URL | a/e/d/vArchivo | RF-049…053 | HU-030…031 |
 | 11 | Usuarios | usuarios (+auth identities) | EF `admin-usuarios` | a/e/d/vUsuario | RF-054…058 | HU-032…033 |
 | 12 | Permisos | permisos | `permisos_guardar` | a/e/d/vPermiso | RF-059…061 | HU-034…036 |
-| 13 | Informes/Reportes | todas las de lectura | `reporte_obtener` | r<Módulo> | RF-062…066 | HU-037…039 |
+| 13 | Informes/Reportes | todas las de lectura | `reporte_obtener` | `r«Módulo»` (rCliente…rMovimiento) | RF-062…066 | HU-037…039 |
 | 14 | Auditoría | logs_auditoria | `auditar`, `limpiar_logs` | a/e/d/vAuditoría | RF-067…069 | HU-040…041 |
 | 15 | Cola de emails | cola_emails | `cola_*`, EF worker | a/e/d/vEmail | RF-070…074 | HU-042…043 |
 | 16 | Portal del cliente | clientes, ordenes_trabajo, ventas, anexos, garantias, empresa | `login_portal`, `portal_detalle_*`, `cliente_actualizar_cuenta` | sesión cliente | RF-075…080 | HU-044…046 |

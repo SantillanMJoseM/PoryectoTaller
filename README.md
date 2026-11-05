@@ -1,5 +1,33 @@
 # React + TypeScript + Vite
 
+Proyecto **Sistema Taller** (PROJECT-001). Stack: React + TypeScript + Tailwind CSS + shadcn/ui + Supabase.
+
+## Documentación
+
+| Área | Documento |
+|---|---|
+| Requisitos (fuente de verdad) | `docs/requirements/SOURCE_PROMPT.md` |
+| Requisitos funcionales / reglas / no funcionales / historias | `docs/requirements/FUNCTIONAL_REQUIREMENTS.md`, `BUSINESS_RULES.md`, `NON_FUNCTIONAL_REQUIREMENTS.md`, `USER_STORIES.md` |
+| **Arquitectura** | `docs/architecture/ARCHITECTURE.md` |
+| **Decisiones (ADRs)** | `docs/architecture/ADR.md` |
+| **Diagrama de componentes y matriz de trazabilidad** | `docs/architecture/COMPONENT_DIAGRAM.md` |
+
+## Arranque (desarrollo)
+
+```bash
+cp .env.example .env          # VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY
+supabase start                # Postgres + Auth + Storage locales
+supabase db reset             # aplica supabase/migrations y carga supabase/seed.sql
+npm install
+npm run dev                   # http://localhost:5173
+```
+
+Scripts: `npm run dev` · `npm run build` · `npm run lint` (oxlint) · `npm run test` (vitest) · `npx tsc -b` (tipos).
+
+---
+
+## Plantilla original
+
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
 Currently, two official plugins are available:

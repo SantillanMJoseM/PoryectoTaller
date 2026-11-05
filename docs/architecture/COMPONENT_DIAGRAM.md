@@ -206,7 +206,7 @@ graph LR
     E1["login-portal<br/>valida correo+documento → sesión cliente"]
     E2["admin-usuarios<br/>crear/editar/baja identidades + propagar permisos"]
     E3["cola-emails-procesar<br/>pendiente→enviando→enviado/fallido"]
-    E4["cola-emails-reintentar<br/>fallido→pendiente (intentos<3)"]
+    E4["cola-emails-reintentar<br/>fallido → pendiente (intentos menores a 3)"]
     E5["auth-hook<br/>fija claims + sesion_registrar en login admin"]
   end
   S1["Mailer adapter: SMTP | Resend (E-02)"]
@@ -435,7 +435,7 @@ Convención SP de capitalizado: `<actividad><Módulo>` con la inicial del módul
 graph LR
   V["OrdenDetalle (UI)"] -->|useOrden| Q["ordenes.queries (TanStack)"]
   Q -->|lectura| RP["ordenes.repositorio"]
-  RP -->|select .range / rpc| PG[("PostgREST + RLS")]
+  RP -->|"select .range / rpc"| PG[("PostgREST + RLS")]
   V -->|onClick Guardar línea| M["useAgregarProductoOrden"]
   M -->|rpc orden_agregar_producto| RPC["función L4 (transacción)"]
   RPC -->|"stock -= n"| TB1[("productos")]
