@@ -65,6 +65,14 @@ function textoValor(valor: unknown, tipo: ColumnaPdf["tipo"]): string {
 /** Encabezado de empresa + título. Devuelve la Y donde sigue el contenido. */
 function dibujarCabecera(doc: jsPDF, opciones: OpcionesPdfTabla): number {
   const e = opciones.empresa;
+  // Logo (si viene como data URL) en la esquina superior derecha.
+  if (e?.logo) {
+    try {
+      doc.addImage(e.logo, MARGEN + ANCHO_UTIL - 34, 8, 30, 16);
+    } catch {
+      // Si el formato no es soportado, se omite el logo sin romper el PDF.
+    }
+  }
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
   doc.text(e?.nombre || "Sistema Taller", MARGEN, 16);

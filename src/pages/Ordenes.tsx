@@ -53,6 +53,7 @@ import {
   catalogosService,
   clientesService,
   empresaService,
+  logoComoDataUrl,
   garantiasService,
   financieroService,
   ordenesService,
@@ -244,7 +245,7 @@ function DetalleOrden({
     setDefectoDeclarado("");
   };
 
-  const imprimir = () => {
+  const imprimir = async () => {
     if (!orden) return;
     const datos = empresa
       ? {
@@ -254,6 +255,7 @@ function DetalleOrden({
             .join(", "),
           telefono: empresa.telefono ?? undefined,
           correo: empresa.correo ?? undefined,
+          logo: await logoComoDataUrl(empresa.url_logo),
         }
       : {};
     const lineas = [

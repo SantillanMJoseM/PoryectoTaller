@@ -22,7 +22,7 @@ import { reportesService, type TipoReporte, type FiltrosReporte, type Reporte, t
 import { auditoriaService } from "./auditoria";
 import { emailsService } from "./emails";
 import { emailQueueService, FN_ENVIAR_EMAIL, AUTOPROCESO_ACTIVADO } from "./emailQueue";
-import { empresaService, cabeceraEmpresa } from "./empresa";
+import { empresaService, cabeceraEmpresa, logoComoDataUrl } from "./empresa";
 import { panelService, ACCESOS_RAPIDOS, type ResumenPanel } from "./panel";
 import { portalService, type SesionPortal } from "./portal";
 
@@ -49,6 +49,7 @@ export {
   AUTOPROCESO_ACTIVADO,
   empresaService,
   cabeceraEmpresa,
+  logoComoDataUrl,
   panelService,
   ACCESOS_RAPIDOS,
   portalService,

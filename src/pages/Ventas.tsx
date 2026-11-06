@@ -41,6 +41,7 @@ import { useAuth } from "../contexts/AuthContext";
 import {
   clientesService,
   empresaService,
+  logoComoDataUrl,
   financieroService,
   ventasService,
   usuariosService,
@@ -141,7 +142,7 @@ function DetalleVenta({
 
   const items: ItemVenta[] = (venta?.items_venta as ItemVenta[] | undefined) ?? [];
 
-  const imprimir = () => {
+  const imprimir = async () => {
     if (!venta) return;
     const datos = empresa
       ? {
@@ -151,6 +152,7 @@ function DetalleVenta({
             .join(", "),
           telefono: empresa.telefono ?? undefined,
           correo: empresa.correo ?? undefined,
+          logo: await logoComoDataUrl(empresa.url_logo),
         }
       : {};
     const lineas = items.map((i) => ({

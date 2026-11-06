@@ -67,6 +67,24 @@ export async function cabeceraEmpresa(): Promise<{
     direccion: [e.calle, e.numero, e.barrio, e.ciudad, e.provincia].filter(Boolean).join(", "),
     telefono: e.telefono ?? undefined,
     correo: e.correo ?? undefined,
-    logo: e.url_logo ?? undefined,
+    logo: await logoComoDataUrl(e.url_logo),
   };
+}
+
+/** Convierte la URL pública del logo a data URL para incrustarlo en PDFs. */
+export async function logoComoDataUrl(url?: string | null): Promise<string | undefined> {
+  if (!url) return undefined;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return url;
+    const blob = await res.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(String(reader.result ?? ""));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return url;
+  }
 }

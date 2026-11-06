@@ -12,7 +12,7 @@
 import { mensajeError } from "../lib/errores";
 import { supabase } from "../lib/supabase";
 import { rangoPeriodo, type Periodo } from "../lib/fechas";
-import { empresaService } from "./empresa";
+import { empresaService, logoComoDataUrl } from "./empresa";
 import type { Cliente, Categoria, Garantia, MovimientoFinanciero, OrdenTrabajo, Producto, Servicio, Venta } from "../lib/types";
 
 export type TipoReporte =
@@ -102,7 +102,7 @@ export const reportesService = {
         .join(", "),
       telefono: empresa?.telefono ?? undefined,
       correo: empresa?.correo ?? undefined,
-      logo: empresa?.url_logo ?? undefined,
+      logo: await logoComoDataUrl(empresa?.url_logo),
     };
     const rango = rangos(filtros);
 

@@ -32,7 +32,7 @@ import {
   TableHeader,
   TableRow,
 } from "../components/ui/table";
-import { empresaService, portalService } from "../services";
+import { empresaService, logoComoDataUrl, portalService } from "../services";
 import { descargarPdf, pdfDocumento, type DatosEmpresaPdf } from "../lib/pdf";
 import { formatoDinero } from "../lib/dinero";
 import { formatoFecha } from "../lib/fechas";
@@ -234,10 +234,11 @@ function PanelPortal({ onSalir }: { onSalir: () => void }) {
         ...d.productos.map((p) => ({ descripcion: p.descripcion, cantidad: p.cantidad, precio: p.precio, subtotal: p.subtotal })),
         ...d.servicios.map((s) => ({ descripcion: s.servicio, cantidad: s.cantidad, precio: s.precio, subtotal: s.subtotal })),
       ];
+      const cab = { ...cabecera, logo: await logoComoDataUrl(empresa?.url_logo) };
       const doc = pdfDocumento(
         "Orden de trabajo",
         `N.º ${String(d.orden.id_orden).slice(0, 8).toUpperCase()} · ${formatoFecha(d.orden.fecha_inicial)}`,
-        cabecera,
+        cab,
         [`Cliente: ${datos?.nombre_cliente ?? ""}`, `Estado: ${d.orden.estado}`],
         lineas,
         Number(d.orden.valor_total ?? 0),
@@ -252,10 +253,11 @@ function PanelPortal({ onSalir }: { onSalir: () => void }) {
     try {
       const d = await portalService.detalleCompra(idCliente, idVenta);
       if (!d) throw new Error("No se pudo cargar el detalle de la compra.");
+      const cab = { ...cabecera, logo: await logoComoDataUrl(empresa?.url_logo) };
       const doc = pdfDocumento(
         "Comprobante de compra",
         `N.º ${String(d.venta.id_venta).slice(0, 8).toUpperCase()} · ${formatoFecha(d.venta.fecha_venta)}`,
-        cabecera,
+        cab,
         [`Cliente: ${datos?.nombre_cliente ?? ""}`],
         d.items.map((i) => ({ descripcion: i.descripcion, cantidad: i.cantidad, precio: i.precio, subtotal: i.subtotal })),
         Number(d.venta.valor_total ?? 0),
