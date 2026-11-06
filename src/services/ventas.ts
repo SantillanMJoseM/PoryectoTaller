@@ -73,6 +73,27 @@ export const ventasService = {
     return crud.crear({ ...datos, fecha_venta: datos.fecha_venta ?? hoyISO() });
   },
 
+  /** Crea la venta y sus ítems en una sola operación (RPC transaccional). */
+  async crearCompleta(payload: {
+    clienteId: string | null;
+    usuarioId: string | null;
+    fecha: string;
+    descuento: number;
+    items: { idProducto: string; cantidad: number; precio?: number }[];
+  }): Promise<string> {
+    return llamarRpc<string>("venta_crear_completa", {
+      p_cliente: payload.clienteId,
+      p_usuario: payload.usuarioId,
+      p_fecha: payload.fecha,
+      p_descuento: payload.descuento,
+      p_items: payload.items.map((i) => ({
+        id_producto: i.idProducto,
+        cantidad: i.cantidad,
+        precio: i.precio ?? null,
+      })),
+    });
+  },
+
   /** Edita cliente/usuario/descuento. El descuento recalcula el total en BD. */
   async editar(id: string, datos: Partial<Venta>): Promise<Venta> {
     const actual = await this.obtenerConDetalles(id);

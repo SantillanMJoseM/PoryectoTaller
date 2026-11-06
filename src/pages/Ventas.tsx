@@ -72,11 +72,13 @@ function DetalleVenta({
   empresa,
   puedeEditar,
   onCerrar,
+  onGuardado,
 }: {
   idVenta: string;
   empresa: Empresa | null;
   puedeEditar: boolean;
   onCerrar: () => void;
+  onGuardado?: () => void;
 }) {
   const [venta, setVenta] = useState<Venta | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -305,7 +307,10 @@ function DetalleVenta({
         </div>
       )}
       <DialogFooter>
-        <Button variant="outline" onClick={onCerrar}>Cerrar</Button>
+        <Button variant="outline" onClick={onCerrar}>{editable ? "Cancelar" : "Cerrar"}</Button>
+        {editable && (
+          <Button onClick={() => { onGuardado?.(); onCerrar(); }}>Confirmar cambios</Button>
+        )}
       </DialogFooter>
     </DialogContent>
   );
@@ -383,6 +388,23 @@ export default function Ventas() {
     void cargar();
   }, [cargar]);
 
+  useEffect(() => {
+    let vigente = true;
+    if (!busquedaNuevo.trim()) {
+      setResultadosNuevo([]);
+      return;
+    }
+    productosService
+      .autocompletar(busquedaNuevo, 8)
+      .then((l) => {
+        if (vigente) setResultadosNuevo(l);
+      })
+      .catch(() => setResultadosNuevo([]));
+    return () => {
+      vigente = false;
+    };
+  }, [busquedaNuevo]);
+
   const nombreCliente = useMemo(() => {
     const m = new Map<string, string>();
     for (const c of clientes) m.set(c.id_cliente, c.nombre_cliente);
@@ -397,10 +419,23 @@ export default function Ventas() {
   const [errorForm, setErrorForm] = useState<string | null>(null);
   const [verId, setVerId] = useState<string | null>(null);
 
+  const [pasoNuevo, setPasoNuevo] = useState(1);
+  const [itemsNuevo, setItemsNuevo] = useState<{ producto: Producto; cantidad: number }[]>([]);
+  const [busquedaNuevo, setBusquedaNuevo] = useState("");
+  const [resultadosNuevo, setResultadosNuevo] = useState<Producto[]>([]);
+  const [prodSelNuevo, setProdSelNuevo] = useState<Producto | null>(null);
+  const [cantidadNuevo, setCantidadNuevo] = useState("1");
+
   const abrirNuevo = () => {
     setForm({ cliente_id: "", usuario_id: "", fecha_venta: hoyISO(), descuento: "0" });
     setFormId(null);
     setErrorForm(null);
+    setPasoNuevo(1);
+    setItemsNuevo([]);
+    setBusquedaNuevo("");
+    setResultadosNuevo([]);
+    setProdSelNuevo(null);
+    setCantidadNuevo("1");
     setDialogo("nuevo");
   };
 
@@ -588,63 +623,287 @@ export default function Ventas() {
           if (!o && !guardando) setDialogo(null);
         }}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{dialogo === "nuevo" ? "Nueva venta" : "Editar venta"}</DialogTitle>
+            <DialogTitle>{dialogo === "nuevo" ? `Nueva factura — paso ${pasoNuevo} de 3` : "Editar venta"}</DialogTitle>
           </DialogHeader>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void guardar();
-            }}
-            className="space-y-3"
-          >
-            <div className="space-y-1">
-              <Label>Cliente</Label>
-              <SimpleSelect
-                value={form.cliente_id}
-                onChange={(v) => setForm({ ...form, cliente_id: v })}
-                opciones={clientes.map((c) => ({ valor: c.id_cliente, etiqueta: c.nombre_cliente }))}
-                placeholder="— Seleccione —"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Usuario</Label>
-              <SimpleSelect
-                value={form.usuario_id}
-                onChange={(v) => setForm({ ...form, usuario_id: v })}
-                opciones={usuarios.map((u) => ({ valor: u.id_usuario, etiqueta: u.nombre }))}
-                placeholder="— Seleccione —"
-              />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+
+          {dialogo === "nuevo" && pasoNuevo === 1 && (
+            <div className="space-y-3">
               <div className="space-y-1">
-                <Label>Fecha</Label>
-                <Input type="date" value={form.fecha_venta} onChange={(e) => setForm({ ...form, fecha_venta: e.target.value })} />
+                <Label>Cliente</Label>
+                <SimpleSelect
+                  value={form.cliente_id}
+                  onChange={(v) => setForm({ ...form, cliente_id: v })}
+                  opciones={clientes.map((c) => ({ valor: c.id_cliente, etiqueta: c.nombre_cliente }))}
+                  placeholder="— Seleccione —"
+                />
               </div>
               <div className="space-y-1">
-                <Label>Descuento</Label>
-                <Input type="number" step="0.01" value={form.descuento} onChange={(e) => setForm({ ...form, descuento: e.target.value })} />
+                <Label>Responsable</Label>
+                <SimpleSelect
+                  value={form.usuario_id}
+                  onChange={(v) => setForm({ ...form, usuario_id: v })}
+                  opciones={usuarios.map((u) => ({ valor: u.id_usuario, etiqueta: u.nombre }))}
+                  placeholder="— Seleccione —"
+                />
               </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label>Fecha</Label>
+                  <Input type="date" value={form.fecha_venta} onChange={(e) => setForm({ ...form, fecha_venta: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Descuento</Label>
+                  <Input type="number" step="0.01" value={form.descuento} onChange={(e) => setForm({ ...form, descuento: e.target.value })} />
+                </div>
+              </div>
+              {errorForm && <p className="text-sm text-destructive">{errorForm}</p>}
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setDialogo(null)} disabled={guardando}>Cancelar</Button>
+                <Button
+                  type="button"
+                  disabled={guardando || !form.cliente_id || !form.usuario_id}
+                  onClick={() => setPasoNuevo(2)}
+                >
+                  Continuar
+                </Button>
+              </DialogFooter>
             </div>
-            {dialogo === "nuevo" && (
-              <p className="text-xs text-muted-foreground">
-                Tras crear la venta podrá agregar ítems (productos con descuento de stock) desde «Ver detalle».
+          )}
+
+          {dialogo === "nuevo" && pasoNuevo === 2 && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Cliente: {clientes.find((c) => c.id_cliente === form.cliente_id)?.nombre_cliente ?? "—"} ·
+                Responsable: {usuarios.find((u) => u.id_usuario === form.usuario_id)?.nombre ?? "—"}
               </p>
-            )}
-            {errorForm && <p className="text-sm text-destructive">{errorForm}</p>}
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogo(null)} disabled={guardando}>Cancelar</Button>
-              <Button type="submit" disabled={guardando}>{guardando ? "Guardando…" : "Guardar"}</Button>
-            </DialogFooter>
-          </form>
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="relative min-w-48 flex-1">
+                  <SearchIcon className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
+                  <Input
+                    className="pl-8"
+                    placeholder="Buscar producto (autocompletado)…"
+                    value={prodSelNuevo ? prodSelNuevo.descripcion : busquedaNuevo}
+                    onChange={(e) => {
+                      setProdSelNuevo(null);
+                      setBusquedaNuevo(e.target.value);
+                    }}
+                  />
+                  {!prodSelNuevo && resultadosNuevo.length > 0 && (
+                    <ul className="absolute z-10 mt-1 max-h-44 w-full overflow-y-auto rounded-lg border bg-popover shadow-md">
+                      {resultadosNuevo.map((p) => (
+                        <li key={p.id_producto}>
+                          <button
+                            type="button"
+                            className="flex w-full items-center justify-between px-3 py-1.5 text-left text-sm hover:bg-muted"
+                            onClick={() => setProdSelNuevo(p)}
+                          >
+                            <span>{p.descripcion}</span>
+                            <span className="text-xs text-muted-foreground">
+                              stock {String(p.stock)} · {formatoDinero(Number(p.precio_venta ?? 0))}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <Input type="number" min="1" className="w-20" value={cantidadNuevo} onChange={(e) => setCantidadNuevo(e.target.value)} title="Cantidad" />
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    if (!prodSelNuevo) return;
+                    setItemsNuevo((prev) => [...prev, { producto: prodSelNuevo, cantidad: Number(cantidadNuevo || "1") }]);
+                    setProdSelNuevo(null);
+                    setBusquedaNuevo("");
+                    setCantidadNuevo("1");
+                  }}
+                >
+                  <PlusIcon data-icon="inline-start" /> Agregar
+                </Button>
+              </div>
+
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Cant.</TableHead>
+                    <TableHead>Artículo</TableHead>
+                    <TableHead className="text-right">Precio</TableHead>
+                    <TableHead className="text-right">Subtotal</TableHead>
+                    <TableHead className="text-right">Quitar</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {itemsNuevo.map((it, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          min="1"
+                          className="h-7 w-16"
+                          value={String(it.cantidad)}
+                          onChange={(e) => {
+                            const nueva = Number(e.target.value);
+                            setItemsNuevo((prev) => prev.map((x, i) => (i === idx ? { ...x, cantidad: nueva > 0 ? nueva : 1 } : x)));
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>{it.producto.descripcion}</TableCell>
+                      <TableCell className="text-right">{formatoDinero(Number(it.producto.precio_venta ?? 0))}</TableCell>
+                      <TableCell className="text-right">{formatoDinero(Number(it.producto.precio_venta ?? 0) * it.cantidad)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon-sm" className="text-destructive" onClick={() => setItemsNuevo((prev) => prev.filter((_, i) => i !== idx))}>
+                          <TrashIcon />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {itemsNuevo.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground">Sin artículos.</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+
+              <p className="text-right text-sm font-medium">
+                Total: {formatoDinero(itemsNuevo.reduce((a, it) => a + Number(it.producto.precio_venta ?? 0) * it.cantidad, 0) - Number(form.descuento.replace(",", ".") || "0"))}
+              </p>
+
+              {errorForm && <p className="text-sm text-destructive">{errorForm}</p>}
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setPasoNuevo(1)} disabled={guardando}>Volver</Button>
+                <Button type="button" variant="outline" onClick={() => setDialogo(null)} disabled={guardando}>Cancelar</Button>
+                <Button
+                  type="button"
+                  disabled={guardando || itemsNuevo.length === 0}
+                  onClick={() => setPasoNuevo(3)}
+                >
+                  Continuar
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+
+          {dialogo === "nuevo" && pasoNuevo === 3 && (
+            <div className="space-y-3">
+              <div className="rounded-xl border p-3 text-sm">
+                <p><span className="font-semibold">Cliente:</span> {clientes.find((c) => c.id_cliente === form.cliente_id)?.nombre_cliente ?? "—"}</p>
+                <p><span className="font-semibold">Responsable:</span> {usuarios.find((u) => u.id_usuario === form.usuario_id)?.nombre ?? "—"}</p>
+                <p><span className="font-semibold">Fecha:</span> {form.fecha_venta}</p>
+                <p><span className="font-semibold">Descuento:</span> {formatoDinero(Number(form.descuento.replace(",", ".") || "0"))}</p>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Cant.</TableHead>
+                    <TableHead>Artículo</TableHead>
+                    <TableHead className="text-right">Precio</TableHead>
+                    <TableHead className="text-right">Subtotal</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {itemsNuevo.map((it, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell>{it.cantidad}</TableCell>
+                      <TableCell>{it.producto.descripcion}</TableCell>
+                      <TableCell className="text-right">{formatoDinero(Number(it.producto.precio_venta ?? 0))}</TableCell>
+                      <TableCell className="text-right">{formatoDinero(Number(it.producto.precio_venta ?? 0) * it.cantidad)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <p className="text-right text-sm font-bold">
+                Total: {formatoDinero(itemsNuevo.reduce((a, it) => a + Number(it.producto.precio_venta ?? 0) * it.cantidad, 0) - Number(form.descuento.replace(",", ".") || "0"))}
+              </p>
+              {errorForm && <p className="text-sm text-destructive">{errorForm}</p>}
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setPasoNuevo(2)} disabled={guardando}>Volver</Button>
+                <Button type="button" variant="outline" onClick={() => setDialogo(null)} disabled={guardando}>Cancelar</Button>
+                <Button
+                  type="button"
+                  disabled={guardando || itemsNuevo.length === 0}
+                  onClick={async () => {
+                    setGuardando(true);
+                    setErrorForm(null);
+                    try {
+                      await ventasService.crearCompleta({
+                        clienteId: form.cliente_id || null,
+                        usuarioId: form.usuario_id || null,
+                        fecha: form.fecha_venta || hoyISO(),
+                        descuento: Number(form.descuento.replace(",", ".") || "0"),
+                        items: itemsNuevo.map((it) => ({
+                          idProducto: it.producto.id_producto,
+                          cantidad: it.cantidad,
+                          precio: Number(it.producto.precio_venta ?? 0),
+                        })),
+                      });
+                      setDialogo(null);
+                      await cargar();
+                    } catch (e) {
+                      setErrorForm(e instanceof Error ? e.message : "No se pudo guardar la venta.");
+                    } finally {
+                      setGuardando(false);
+                    }
+                  }}
+                >
+                  {guardando ? "Guardando…" : "Confirmar factura"}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+
+          {dialogo === "editar" && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void guardar();
+              }}
+              className="space-y-3"
+            >
+              <div className="space-y-1">
+                <Label>Cliente</Label>
+                <SimpleSelect
+                  value={form.cliente_id}
+                  onChange={(v) => setForm({ ...form, cliente_id: v })}
+                  opciones={clientes.map((c) => ({ valor: c.id_cliente, etiqueta: c.nombre_cliente }))}
+                  placeholder="— Seleccione —"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Usuario</Label>
+                <SimpleSelect
+                  value={form.usuario_id}
+                  onChange={(v) => setForm({ ...form, usuario_id: v })}
+                  opciones={usuarios.map((u) => ({ valor: u.id_usuario, etiqueta: u.nombre }))}
+                  placeholder="— Seleccione —"
+                />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label>Fecha</Label>
+                  <Input type="date" value={form.fecha_venta} onChange={(e) => setForm({ ...form, fecha_venta: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Descuento</Label>
+                  <Input type="number" step="0.01" value={form.descuento} onChange={(e) => setForm({ ...form, descuento: e.target.value })} />
+                </div>
+              </div>
+              {errorForm && <p className="text-sm text-destructive">{errorForm}</p>}
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setDialogo(null)} disabled={guardando}>Cancelar</Button>
+                <Button type="submit" disabled={guardando}>{guardando ? "Guardando…" : "Guardar"}</Button>
+              </DialogFooter>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
 
       {/* ---------------------------- Ver detalle con ítems -------------------- */}
       {verId && (
         <Dialog open onOpenChange={(o) => !o && setVerId(null)}>
-          <DetalleVenta idVenta={verId} empresa={empresa} puedeEditar={puede(["eVenta"])} onCerrar={() => setVerId(null)} />
+          <DetalleVenta idVenta={verId} empresa={empresa} puedeEditar={puede(["eVenta"])} onCerrar={() => setVerId(null)} onGuardado={() => void cargar()} />
         </Dialog>
       )}
 
