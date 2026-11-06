@@ -5,7 +5,16 @@ import path from "path";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  resolve: {
-    alias: { "@": path.resolve(__dirname, "./src") },
+  resolve: { alias: { "@": path.resolve(__dirname, "./src") } },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ["react", "react-dom", "react-router-dom"],
+          supabase: ["@supabase/supabase-js"],
+          pdf: ["jspdf"],
+        },
+      },
+    },
   },
 });

@@ -9,25 +9,10 @@
 // ============================================================================
 
 import { Routes, Route, Navigate } from "react-router-dom";
+import { lazy, Suspense } from "react";
 import { useAuth } from "./contexts/AuthContext";
 import Layout from "./components/Layout";
 import LoginPage from "./pages/LoginPage";
-import Dashboard from "./pages/Dashboard";
-import Clientes from "./pages/Clientes";
-import Productos from "./pages/Productos";
-import Servicios from "./pages/Servicios";
-import Ordenes from "./pages/Ordenes";
-import Ventas from "./pages/Ventas";
-import Garantias from "./pages/Garantias";
-import Financiero from "./pages/Financiero";
-import Documentos from "./pages/Documentos";
-import Usuarios from "./pages/Usuarios";
-import Permisos from "./pages/Permisos";
-import Reportes from "./pages/Reportes";
-import Auditoria from "./pages/Auditoria";
-import Emails from "./pages/Emails";
-import Empresa from "./pages/Empresa";
-import Portal from "./pages/Portal";
 
 /** Rutas con los códigos de actividad que habilitan cada módulo. */
 const RUTAS: { ruta: string; elemento: React.ReactNode; codigos: string[] }[] = [
@@ -51,6 +36,24 @@ const RUTAS: { ruta: string; elemento: React.ReactNode; codigos: string[] }[] = 
   { ruta: "/emails", elemento: <Emails />, codigos: ["vEmail"] },
   { ruta: "/empresa", elemento: <Empresa />, codigos: ["cEmpresa", "eEmpresa", "vEmpresa"] },
 ];
+
+
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Clientes = lazy(() => import("./pages/Clientes"));
+const Productos = lazy(() => import("./pages/Productos"));
+const Servicios = lazy(() => import("./pages/Servicios"));
+const Ordenes = lazy(() => import("./pages/Ordenes"));
+const Ventas = lazy(() => import("./pages/Ventas"));
+const Garantias = lazy(() => import("./pages/Garantias"));
+const Financiero = lazy(() => import("./pages/Financiero"));
+const Documentos = lazy(() => import("./pages/Documentos"));
+const Usuarios = lazy(() => import("./pages/Usuarios"));
+const Permisos = lazy(() => import("./pages/Permisos"));
+const Reportes = lazy(() => import("./pages/Reportes"));
+const Auditoria = lazy(() => import("./pages/Auditoria"));
+const Emails = lazy(() => import("./pages/Emails"));
+const Empresa = lazy(() => import("./pages/Empresa"));
+const Portal = lazy(() => import("./pages/Portal"));
 
 function Guard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -79,6 +82,7 @@ export default function App() {
   if (loading) return <div className="p-6 text-sm text-muted-foreground">Cargando…</div>;
 
   return (
+    <Suspense fallback={<div className="p-6">Cargando...</div>}>
     <Routes>
       {/* Login administrativo */}
       <Route
@@ -107,5 +111,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
+    </Suspense>
   );
 }
