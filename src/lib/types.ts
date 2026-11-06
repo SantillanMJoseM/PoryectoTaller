@@ -213,6 +213,9 @@ export interface Equipo {
   fecha_fabricacion?: string | null;
   marca_id?: string | null;
   cliente_id?: string | null;
+  condicion?: string | null;
+  numero_chasis?: string | null;
+  numero_motor?: string | null;
 }
 
 export interface EquipoOrden {

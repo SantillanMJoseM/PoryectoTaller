@@ -16,6 +16,7 @@ import LoginPage from "./pages/LoginPage";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Clientes = lazy(() => import("./pages/Clientes"));
+const Equipos = lazy(() => import("./pages/Equipos"));
 const Productos = lazy(() => import("./pages/Productos"));
 const Servicios = lazy(() => import("./pages/Servicios"));
 const Ordenes = lazy(() => import("./pages/Ordenes"));
@@ -35,6 +36,7 @@ const Portal = lazy(() => import("./pages/Portal"));
 const RUTAS: { ruta: string; elemento: React.ReactNode; codigos: string[] }[] = [
   { ruta: "/", elemento: <Dashboard />, codigos: [] },
   { ruta: "/clientes", elemento: <Clientes />, codigos: ["vCliente"] },
+  { ruta: "/equipos", elemento: <Equipos />, codigos: ["vCliente"] },
   { ruta: "/productos", elemento: <Productos />, codigos: ["vProducto"] },
   { ruta: "/servicios", elemento: <Servicios />, codigos: ["vServicio"] },
   { ruta: "/ordenes", elemento: <Ordenes />, codigos: ["vOrden"] },

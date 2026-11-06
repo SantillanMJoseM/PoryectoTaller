@@ -24,6 +24,7 @@ interface ItemMenu {
 const MENU: ItemMenu[] = [
   { to: "/", etiqueta: "Panel principal", codigos: [] },
   { to: "/clientes", etiqueta: "Clientes", codigos: ["vCliente", "aCliente", "eCliente", "dCliente", "rCliente"] },
+  { to: "/equipos", etiqueta: "Equipos", codigos: ["vCliente", "aCliente", "eCliente", "dCliente", "rCliente"] },
   { to: "/productos", etiqueta: "Productos", codigos: ["vProducto", "aProducto", "eProducto", "dProducto", "rProducto"] },
   { to: "/servicios", etiqueta: "Servicios", codigos: ["vServicio", "aServicio", "eServicio", "dServicio"] },
   { to: "/ordenes", etiqueta: "Órdenes de trabajo", codigos: ["vOrden", "aOrden", "eOrden", "dOrden", "rOrden"] },

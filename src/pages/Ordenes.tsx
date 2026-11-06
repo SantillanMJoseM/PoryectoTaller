@@ -767,6 +767,26 @@ export default function Ordenes() {
     void cargar();
   }, [cargar]);
 
+  useEffect(() => {
+    catalogosService.marcas
+      .listar({ tamPagina: 200, columna: "marca", ascendente: true })
+      .then((r) => setMarcas((r as any)?.datos ?? []))
+      .catch(() => setMarcas([]));
+  }, []);
+
+  useEffect(() => {
+    if (!form.cliente_id) {
+      setEquiposClienteForm([]);
+      setEquipoSelForm("");
+      return;
+    }
+    catalogosService.equipos
+      .listar(form.cliente_id)
+      .then((r) => setEquiposClienteForm((r as { datos?: Equipo[] })?.datos ?? []))
+      .catch(() => setEquiposClienteForm([]));
+    setEquipoSelForm("");
+  }, [form.cliente_id]);
+
   const nombreCliente = useMemo(() => {
     const m = new Map<string, string>();
     for (const c of clientes) m.set(c.id_cliente, c.nombre_cliente);
@@ -827,9 +847,20 @@ export default function Ordenes() {
         observaciones: form.observaciones || null,
         laudo_tecnico: form.laudo_tecnico || null,
       };
-      if (formId) await ordenesService.editar(formId, payload);
-      else await ordenesService.crear(payload);
+      if (formId) {
+        await ordenesService.editar(formId, payload);
+      } else {
+        const nueva = await ordenesService.crear(payload);
+        if (equipoSelForm) {
+          await catalogosService.equiposOrden.agregar({
+            orden_id: (nueva as any).id_orden,
+            equipo_id: equipoSelForm,
+            defecto_declarado: form.defecto || null,
+          });
+        }
+      }
       setDialogo(null);
+      setEquipoSelForm("");
       await cargar();
     } catch (e) {
       setErrorForm(e instanceof Error ? e.message : "No se pudo guardar la orden.");
@@ -841,6 +872,12 @@ export default function Ordenes() {
   /* Acciones */
   const [verId, setVerId] = useState<string | null>(null);
   const [eliminarFila, setEliminarFila] = useState<OrdenConCliente | null>(null);
+  const [equiposClienteForm, setEquiposClienteForm] = useState<Equipo[]>([]);
+  const [equipoSelForm, setEquipoSelForm] = useState("");
+  const [marcas, setMarcas] = useState<any[]>([]);
+  const [nuevoEquipoOpen, setNuevoEquipoOpen] = useState(false);
+  const [nuevoEquipo, setNuevoEquipo] = useState({ equipo: "", marca_id: "", modelo: "", color: "", condicion: "", numero_serie: "", numero_chasis: "", numero_motor: "" });
+  const [guardandoEquipo, setGuardandoEquipo] = useState(false);
   const [eliminando, setEliminando] = useState(false);
   const [facturarFila, setFacturarFila] = useState<OrdenConCliente | null>(null);
   const [factForm, setFactForm] = useState({ forma_pago: "", fecha_vencimiento: "", categoria_id: "", cuenta_id: "" });
@@ -1024,6 +1061,24 @@ export default function Ordenes() {
                 placeholder="Autocompletado de clientes…"
               />
             </div>
+            <div className="space-y-1">
+              <Label>Equipo a revisar</Label>
+              <div className="flex gap-2">
+                <SimpleSelect
+                  value={equipoSelForm}
+                  onChange={setEquipoSelForm}
+                  opciones={equiposClienteForm.map((e) => ({
+                    valor: e.id_equipo,
+                    etiqueta: `${e.equipo ?? "Equipo"} · ${e.modelo ?? "—"} · ${e.color ?? "—"} · Serie: ${e.numero_serie ?? "—"} · Chasis: ${e.numero_chasis ?? "—"}`,
+                  }))}
+                  placeholder={form.cliente_id ? "Seleccione un equipo…" : "Seleccione primero un cliente"}
+                  disabled={!form.cliente_id}
+                />
+                <Button type="button" variant="outline" onClick={() => setNuevoEquipoOpen(true)} disabled={!form.cliente_id}>
+                  + Cargar nuevo equipo
+                </Button>
+              </div>
+            </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1">
                 <Label>Usuario/Técnico</Label>
@@ -1093,7 +1148,7 @@ export default function Ordenes() {
                 Cancelar
               </Button>
               <Button type="submit" disabled={guardando}>
-                {guardando ? "Guardando…" : "Guardar"}
+                {guardando ? "Guardando…" : "Confirmar cambios"}
               </Button>
             </DialogFooter>
           </form>
@@ -1163,6 +1218,102 @@ export default function Ordenes() {
 
       {/* --------------------------- Ver detalle ------------------------- */}
       {verId && <Dialog open onOpenChange={(o) => !o && setVerId(null)}><DetalleOrden idOrden={verId} empresa={empresa} onCerrar={() => setVerId(null)} /></Dialog>}
+
+      <Dialog open={nuevoEquipoOpen} onOpenChange={setNuevoEquipoOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nuevo equipo</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label>Equipo</Label>
+              <Input value={nuevoEquipo.equipo} onChange={(e) => setNuevoEquipo({ ...nuevoEquipo, equipo: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <Label>Marca</Label>
+              <SimpleSelect
+                value={nuevoEquipo.marca_id}
+                onChange={(v) => setNuevoEquipo({ ...nuevoEquipo, marca_id: v })}
+                opciones={marcas.map((m) => ({ valor: m.id_marca, etiqueta: m.marca }))}
+                placeholder="— Seleccione —"
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label>Modelo</Label>
+                <Input value={nuevoEquipo.modelo} onChange={(e) => setNuevoEquipo({ ...nuevoEquipo, modelo: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label>Color</Label>
+                <Input value={nuevoEquipo.color} onChange={(e) => setNuevoEquipo({ ...nuevoEquipo, color: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Condición</Label>
+              <SimpleSelect
+                value={nuevoEquipo.condicion}
+                onChange={(v) => setNuevoEquipo({ ...nuevoEquipo, condicion: v })}
+                opciones={[
+                  { valor: "Nuevo", etiqueta: "Nuevo" },
+                  { valor: "Usado", etiqueta: "Usado" },
+                  { valor: "Buen estado", etiqueta: "Buen estado" },
+                  { valor: "Regular", etiqueta: "Regular" },
+                  { valor: "Dañado", etiqueta: "Dañado" },
+                  { valor: "Fuera de servicio", etiqueta: "Fuera de servicio" },
+                ]}
+                placeholder="— Seleccione —"
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label>Número de serie</Label>
+                <Input value={nuevoEquipo.numero_serie} onChange={(e) => setNuevoEquipo({ ...nuevoEquipo, numero_serie: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label>Número de chasis</Label>
+                <Input value={nuevoEquipo.numero_chasis} onChange={(e) => setNuevoEquipo({ ...nuevoEquipo, numero_chasis: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Número de motor</Label>
+              <Input value={nuevoEquipo.numero_motor} onChange={(e) => setNuevoEquipo({ ...nuevoEquipo, numero_motor: e.target.value })} />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setNuevoEquipoOpen(false)} disabled={guardandoEquipo}>Cancelar</Button>
+              <Button
+                type="button"
+                disabled={guardandoEquipo || !nuevoEquipo.equipo.trim()}
+                onClick={async () => {
+                  setGuardandoEquipo(true);
+                  try {
+                    const creado = await catalogosService.equipos.crear({
+                      cliente_id: form.cliente_id,
+                      equipo: nuevoEquipo.equipo,
+                      marca_id: nuevoEquipo.marca_id || null,
+                      modelo: nuevoEquipo.modelo || null,
+                      color: nuevoEquipo.color || null,
+                      condicion: nuevoEquipo.condicion || null,
+                      numero_serie: nuevoEquipo.numero_serie || null,
+                      numero_chasis: nuevoEquipo.numero_chasis || null,
+                      numero_motor: nuevoEquipo.numero_motor || null,
+                    });
+                    setEquiposClienteForm((prev) => [creado as Equipo, ...prev]);
+                    setEquipoSelForm((creado as Equipo).id_equipo);
+                    setNuevoEquipoOpen(false);
+                    setNuevoEquipo({ equipo: "", marca_id: "", modelo: "", color: "", condicion: "", numero_serie: "", numero_chasis: "", numero_motor: "" });
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : "No se pudo guardar el equipo.");
+                  } finally {
+                    setGuardandoEquipo(false);
+                  }
+                }}
+              >
+                {guardandoEquipo ? "Guardando…" : "Guardar equipo"}
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
