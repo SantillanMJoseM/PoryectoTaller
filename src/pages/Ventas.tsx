@@ -388,23 +388,6 @@ export default function Ventas() {
     void cargar();
   }, [cargar]);
 
-  useEffect(() => {
-    let vigente = true;
-    if (!busquedaNuevo.trim()) {
-      setResultadosNuevo([]);
-      return;
-    }
-    productosService
-      .autocompletar(busquedaNuevo, 8)
-      .then((l) => {
-        if (vigente) setResultadosNuevo(l);
-      })
-      .catch(() => setResultadosNuevo([]));
-    return () => {
-      vigente = false;
-    };
-  }, [busquedaNuevo]);
-
   const nombreCliente = useMemo(() => {
     const m = new Map<string, string>();
     for (const c of clientes) m.set(c.id_cliente, c.nombre_cliente);
@@ -425,6 +408,23 @@ export default function Ventas() {
   const [resultadosNuevo, setResultadosNuevo] = useState<Producto[]>([]);
   const [prodSelNuevo, setProdSelNuevo] = useState<Producto | null>(null);
   const [cantidadNuevo, setCantidadNuevo] = useState("1");
+
+  useEffect(() => {
+    let vigente = true;
+    if (!busquedaNuevo.trim()) {
+      setResultadosNuevo([]);
+      return;
+    }
+    productosService
+      .autocompletar(busquedaNuevo, 8)
+      .then((l) => {
+        if (vigente) setResultadosNuevo(l);
+      })
+      .catch(() => setResultadosNuevo([]));
+    return () => {
+      vigente = false;
+    };
+  }, [busquedaNuevo]);
 
   const abrirNuevo = () => {
     setForm({ cliente_id: "", usuario_id: "", fecha_venta: hoyISO(), descuento: "0" });

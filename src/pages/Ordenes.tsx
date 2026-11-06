@@ -136,7 +136,7 @@ function DetalleOrden({
       setProductos(lineas.productos);
       setServicios(lineas.servicios);
       setAnexos(listaAnexos.map((a) => ({ id_anexo: a.id_anexo, anexo: a.anexo })));
-      setEquiposOrden(listaEquipos);
+      setEquiposOrden(Array.isArray(listaEquipos) ? listaEquipos : (listaEquipos as any)?.datos ?? []);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo cargar la orden.");
@@ -158,7 +158,7 @@ function DetalleOrden({
     if (!orden?.cliente_id) return;
     catalogosService
       .equipos.listar(orden.cliente_id)
-      .then(setEquiposCliente)
+      .then((r) => setEquiposCliente((r as { datos?: Equipo[] })?.datos ?? []))
       .catch(() => setEquiposCliente([]));
   }, [orden?.cliente_id]);
 
