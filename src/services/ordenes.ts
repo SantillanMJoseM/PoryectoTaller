@@ -29,7 +29,7 @@ import type {
 
 const crud = crearCrud<OrdenTrabajo>("ordenes_trabajo", "id_orden", ["descripcion_producto", "defecto", "observaciones"]);
 
-const SELECT_DETALLE = `*, clientes:id_cliente(*), usuarios:id_usuario(*), garantias:id_garantia(*)`;
+const SELECT_DETALLE = `*, clientes:cliente_id(*), usuarios:usuario_id(*), garantias:garantia_id(*)`;
 
 export const ordenesService = {
   listar: crud.listar,

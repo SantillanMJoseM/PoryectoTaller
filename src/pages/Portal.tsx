@@ -13,6 +13,7 @@ import { useCallback, useEffect, useState } from "react";
 import { PrinterIcon, BriefcaseIcon, ReceiptIcon, UserIcon } from "lucide-react";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
+import { ThemeToggle } from "../components/ThemeToggle";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import {
   Dialog,
@@ -275,6 +276,7 @@ function PanelPortal({ onSalir }: { onSalir: () => void }) {
               Portal del cliente — {sesion?.nombre} ({sesion?.correo})
             </p>
           </div>
+          <ThemeToggle />
           <Button variant="outline" size="sm" onClick={onSalir}>
             Cerrar sesión
           </Button>

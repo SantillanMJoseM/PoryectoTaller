@@ -18,7 +18,7 @@ import type { ItemVenta, Venta } from "../lib/types";
 
 const crud = crearCrud<Venta>("ventas", "id_venta", []);
 
-const SELECT_DETALLE = `*, clientes:id_cliente(*), usuarios:id_usuario(*), items_venta(*)`;
+const SELECT_DETALLE = `*, clientes:cliente_id(*), usuarios:usuario_id(*), items_venta(*)`;
 
 export const ventasService = {
   listar: crud.listar,

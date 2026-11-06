@@ -23,7 +23,7 @@ import type { Permiso, Usuario } from "../lib/types";
 const crudUsuarios = crearCrud<Usuario>("usuarios", "id_usuario", ["nombre", "correo", "cpf"]);
 const crudPermisos = crearCrud<Permiso>("permisos", "id_permiso", ["nombre"]);
 
-const SELECT_USUARIO = `*, permisos:id_permiso(*)`;
+const SELECT_USUARIO = `*, permisos:permiso_id(*)`;
 
 export const usuariosService = {
   listar: crudUsuarios.listar,

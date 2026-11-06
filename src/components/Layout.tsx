@@ -12,6 +12,7 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { MenuIcon, XIcon, LogOutIcon } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { Button } from "./ui/button";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface ItemMenu {
   to: string;
@@ -72,6 +73,7 @@ export default function Layout() {
           <Link to="/" className="text-lg font-bold" onClick={() => setAbierto(false)}>
             Sistema Taller
           </Link>
+          <ThemeToggle />
           <Button
             variant="ghost"
             size="icon-sm"
@@ -123,6 +125,7 @@ export default function Layout() {
             <MenuIcon />
           </Button>
           <span className="truncate text-sm font-semibold">Sistema Taller</span>
+          <ThemeToggle />
           <Button variant="outline" size="icon-sm" onClick={() => void cerrarSesion()} title="Cerrar sesión">
             <LogOutIcon />
           </Button>
