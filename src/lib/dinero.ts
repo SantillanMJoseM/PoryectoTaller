@@ -54,5 +54,7 @@ export function parseMonto(texto: string | number | null | undefined): number {
 /** Formato monetario de pantalla: 2 decimales (separador de miles simple). */
 export function formatoDinero(valor: number | null | undefined): string {
   const n = redondear(valor ?? 0);
-  return n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const partes = n.toFixed(2).split(".");
+  const entero = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `${entero},${partes[1]}`;
 }

@@ -1,6 +1,6 @@
 // ============================================================================
 // Sistema Taller — QA: Portal del cliente (TASK-0010 / AG-012)
-// @vitest-environment jsdom
+// @vitest-environment node
 // ============================================================================
 // SOURCE_PROMPT.md §15 flujos críticos cubiertos (RB-032 / RB-033):
 //   • Ingreso por correo + documento (Edge Function «portal-login» o
@@ -16,6 +16,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { falso } from "../helpers/supabaseFalso";
 import { portalService, type SesionPortal } from "../../src/services/portal";
+
+if (!(globalThis as any).localStorage) {
+  const store = new Map<string, string>();
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => { store.set(k, String(v)); },
+    removeItem: (k: string) => { store.delete(k); },
+    clear: () => { store.clear(); },
+    key: (i: number) => [...store.keys()][i] ?? null,
+    get length() { return store.size; },
+  };
+}
 
 vi.mock("../../src/lib/supabase", async (importOriginal) => {
   const original = await importOriginal<typeof import("../../src/lib/supabase")>();
@@ -132,7 +144,7 @@ describe("mis órdenes, compras y detalles (RB: solo lo propio)", () => {
     const propio = await portalService.detalleOrden("c-1", "o-1");
     expect(propio?.orden.id_orden).toBe("o-1");
     expect(propio?.productos).toHaveLength(1);
-    await expect(portalService.detalleOrden("c-2", "o-2")).resolves.toBeNull();
+    await expect(portalService.detalleOrden("c-1", "o-2")).resolves.toBeNull();
   });
 
   it("detalleCompra propio: venta + items; de otro cliente → null", async () => {

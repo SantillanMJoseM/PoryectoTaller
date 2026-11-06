@@ -12,7 +12,7 @@ import { ESTADOS_ORDEN as ESTADOS } from "./types";
 export class ValidationError extends Error {
   campos: Record<string, string>;
   constructor(campos: Record<string, string>) {
-    super("Datos inválidos");
+    super("Datos inválidos: " + Object.values(campos).join(" "));
     this.name = "ValidationError";
     this.campos = campos;
   }
@@ -61,7 +61,7 @@ export function validarCliente(c: Partial<Cliente>): Record<string, string> {
 
 export function validarProducto(p: Partial<Producto>): Record<string, string> {
   const campos: Record<string, string> = {};
-  if (p.descripcion !== undefined) texto(p.descripcion, "descripcion", campos);
+  texto(p.descripcion, "descripcion", campos);
   for (const [campo, nombre] of [
     ["precio_compra", "Precio de compra"],
     ["precio_venta", "Precio de venta"],
@@ -112,7 +112,7 @@ export function validarOrden(o: {
   const campos: Record<string, string> = {};
   if (!o.estado || !ESTADOS.includes(o.estado as EstadoOrden))
     campos.estado = "Estado de orden inválido.";
-  if (!esFechaISO(o.fecha_inicial)) campos.fecha_inicial = "Fecha inicial inválida.";
+  if (o.fecha_inicial && !esFechaISO(o.fecha_inicial)) campos.fecha_inicial = "Fecha inicial inválida.";
   if (o.fecha_final && esFechaISO(o.fecha_inicial) && o.fecha_final < o.fecha_inicial.slice(0, 10))
     campos.fecha_final = "La fecha final no puede ser anterior a la inicial.";
   if (!o.cliente_id) campos.cliente_id = "Debe seleccionar un cliente.";

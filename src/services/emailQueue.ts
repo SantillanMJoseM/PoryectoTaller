@@ -103,7 +103,7 @@ export const emailQueueService = {
 
   eliminar: (id: string) => emailsService.eliminar(id),
 
-  listar: emailsService.listar.bind(emailsService),
+  listar: (opciones?: any) => emailsService.listar(opciones),
 
   listarPorEstado: (estado: EstadoEmail, pagina = 1, tamPagina = 20) =>
     emailsService.listarPorEstado(estado, pagina, tamPagina),
