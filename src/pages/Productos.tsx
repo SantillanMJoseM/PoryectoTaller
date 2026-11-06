@@ -41,6 +41,7 @@ export default function Productos() {
   const [delta, setDelta] = useState("");
   const [ajustando, setAjustando] = useState(false);
   const [errorAjuste, setErrorAjuste] = useState<string | null>(null);
+  const [refresco, setRefresco] = useState(0);
 
   const listar = useCallback(
     async ({ q, pagina, tamPagina }: { q: string; pagina: number; tamPagina: number }) => {
@@ -74,7 +75,7 @@ export default function Productos() {
       setAjuste(null);
       setDelta("");
       await productosService.alertaStock().then(setAlertas).catch(() => undefined);
-      await listar({ q: "", pagina: 1, tamPagina: 1 });
+      setRefresco((x) => x + 1);
     } finally {
       setAjustando(false);
     }
@@ -163,6 +164,7 @@ export default function Productos() {
         puedeAgregar={puede(["aProducto"])}
         puedeEditar={puede(["eProducto"])}
         puedeEliminar={puede(["dProducto"])}
+        recargarKey={refresco}
       />
 
       <ConfirmDialog

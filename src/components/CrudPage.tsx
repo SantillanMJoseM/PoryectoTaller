@@ -86,6 +86,8 @@ export interface CrudPageProps {
   cabecera?: ReactNode;
   tamPagina?: number;
   placeholderBusqueda?: string;
+  /** Fuerza una recarga cuando cambia (p. ej. tras ajustar stock). */
+  recargarKey?: number;
 }
 
 const SI_NO: OpcionSelect[] = [
@@ -183,6 +185,7 @@ export default function CrudPage({
   cabecera,
   tamPagina = 10,
   placeholderBusqueda = "Buscar…",
+  recargarKey,
 }: CrudPageProps) {
   const [q, setQ] = useState("");
   const [pagina, setPagina] = useState(1);
@@ -224,6 +227,11 @@ export default function CrudPage({
   useEffect(() => {
     void cargar();
   }, [cargar]);
+
+  useEffect(() => {
+    if (recargarKey === undefined) return;
+    void cargar();
+  }, [recargarKey]);
 
   const abrirNuevo = () => {
     const inicial: Record<string, string | boolean> = {};
