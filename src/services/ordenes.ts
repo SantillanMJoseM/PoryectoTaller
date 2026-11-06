@@ -15,6 +15,7 @@
 import { crearCrud, llamarRpc } from "../lib/crud";
 import { mensajeError } from "../lib/errores";
 import { hoyISO } from "../lib/fechas";
+import { generarUuid } from "../lib/uuid";
 import { supabase } from "../lib/supabase";
 import { subtotalLinea, redondear } from "../lib/dinero";
 import { validarOrden } from "../lib/validaciones";
@@ -258,7 +259,7 @@ export const ordenesService = {
   /** Sube archivo a Storage (bucket anexos-orden) y registra el anexo. */
   async adjuntarAnexo(idOrden: string, archivo: File): Promise<Anexo> {
     const sanitizado = archivo.name.replace(/[^\w.\-]/g, "_");
-    const ruta = `${idOrden}/${crypto.randomUUID()}-${sanitizado}`;
+    const ruta = `${idOrden}/${generarUuid()}-${sanitizado}`;
     const { error: errUpload } = await supabase.storage
       .from("anexos-orden")
       .upload(ruta, archivo, { upsert: false });

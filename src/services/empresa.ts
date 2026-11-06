@@ -10,6 +10,7 @@
 
 import { crearCrud } from "../lib/crud";
 import { mensajeError } from "../lib/errores";
+import { generarUuid } from "../lib/uuid";
 import { supabase } from "../lib/supabase";
 import type { Empresa } from "../lib/types";
 
@@ -42,7 +43,7 @@ export const empresaService = {
     if (archivo.size > LIMITE_BYTES) throw new Error("El logo supera el límite de 5 MB.");
     if (!/^image\//.test(archivo.type)) throw new Error("El logo debe ser una imagen.");
     const sanitizado = archivo.name.replace(/[^\w.\-]/g, "_");
-    const ruta = `${crypto.randomUUID()}-${sanitizado}`;
+    const ruta = `${generarUuid()}-${sanitizado}`;
     const { error: errUpload } = await supabase.storage
       .from("logos")
       .upload(ruta, archivo, { upsert: false });

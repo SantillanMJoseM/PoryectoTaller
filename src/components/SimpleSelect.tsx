@@ -41,7 +41,7 @@ export default function SimpleSelect({
       disabled={disabled}
       onChange={(e) => onChange(e.target.value)}
       className={cn(
-        "flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm whitespace-nowrap transition-colors outline-none",
+        "flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border border-input bg-background px-2.5 py-1 text-sm whitespace-nowrap transition-colors outline-none dark:bg-input/30",
         "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
         "disabled:cursor-not-allowed disabled:opacity-50",
         className,

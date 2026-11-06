@@ -13,6 +13,7 @@
 // ============================================================================
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { generarUuid } from "./uuid";
 
 const url = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim() ?? "";
 const anonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim() ?? "";
@@ -58,7 +59,7 @@ export const LIMITE_ALMACEN_BYTES = 20 * 1024 * 1024;
 
 /** Sanitiza el nombre del archivo para la ruta dentro del bucket. */
 export function rutaSegura(nombre: string): string {
-  return `${crypto.randomUUID()}-${nombre.replace(/[^\w.\-]/g, "_")}`;
+  return `${generarUuid()}-${nombre.replace(/[^\w.\-]/g, "_")}`;
 }
 
 /** Sube un archivo a un bucket privado. Devuelve la ruta almacenada. */

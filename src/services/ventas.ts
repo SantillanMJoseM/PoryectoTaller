@@ -75,11 +75,17 @@ export const ventasService = {
 
   /** Edita cliente/usuario/descuento. El descuento recalcula el total en BD. */
   async editar(id: string, datos: Partial<Venta>): Promise<Venta> {
+    const actual = await this.obtenerConDetalles(id);
+    if (actual?.facturado) throw new Error("La venta ya está facturada y no puede modificarse.");
     asegurarValido(validarVenta(datos));
     return crud.editar(id, datos);
   },
 
-  eliminar: crud.eliminar,
+  async eliminar(id: string): Promise<void> {
+    const v = await this.obtenerConDetalles(id);
+    if (v?.facturado) throw new Error("La venta ya está facturada y no puede eliminarse.");
+    await crud.eliminar(id);
+  },
 
   // ------------------------------- Ítems ------------------------------------
 
@@ -90,6 +96,8 @@ export const ventasService = {
     cantidad: number,
     precio?: number,
   ): Promise<string> {
+    const v = await this.obtenerConDetalles(idVenta);
+    if (v?.facturado) throw new Error("La venta ya está facturada y no admite nuevos productos.");
     if (!(cantidad > 0)) throw new Error("La cantidad debe ser mayor que cero.");
     return llamarRpc<string>("venta_agregar_item", {
       p_venta: idVenta,
@@ -101,12 +109,24 @@ export const ventasService = {
 
   /** Cambia cantidad del ítem: devuelve la diferencia de stock. */
   async cambiarCantidadItem(idItem: string, cantidad: number): Promise<void> {
+    const { data } = await supabase.from("items_venta").select("venta_id").eq("id_item_venta", idItem).maybeSingle();
+    const idVenta = (data as { venta_id?: string } | null)?.venta_id;
+    if (idVenta) {
+      const v = await this.obtenerConDetalles(idVenta);
+      if (v?.facturado) throw new Error("La venta ya está facturada y no admite cambios en cantidades.");
+    }
     if (!(cantidad > 0)) throw new Error("La cantidad debe ser mayor que cero.");
     await llamarRpc("venta_cambiar_cantidad_item", { p_item: idItem, p_cantidad: cantidad });
   },
 
   /** Quita el ítem y devuelve su stock. */
   async quitarItem(idItem: string): Promise<void> {
+    const { data } = await supabase.from("items_venta").select("venta_id").eq("id_item_venta", idItem).maybeSingle();
+    const idVenta = (data as { venta_id?: string } | null)?.venta_id;
+    if (idVenta) {
+      const v = await this.obtenerConDetalles(idVenta);
+      if (v?.facturado) throw new Error("La venta ya está facturada y no admite eliminación de ítems.");
+    }
     await llamarRpc("venta_quitar_item", { p_item: idItem });
   },
 

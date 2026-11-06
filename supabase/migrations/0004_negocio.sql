@@ -57,7 +57,7 @@ create or replace function public.f_stock_no_directo() returns trigger
 language plpgsql security definer set search_path = public, pg_temp as $$
 begin
   if new.stock is distinct from old.stock
-     and coalesce(current_setting('app_permite_stock_write', true), 'off') <> 'on' then
+     and coalesce(current_setting('app.permite_stock_write', true), 'off') <> 'on' then
     raise exception 'El stock solo se actualiza mediante órdenes/ventas o ajuste de inventario.'
       using hint = 'stock_guard';
   end if;
@@ -212,9 +212,9 @@ begin
     raise exception 'Stock insuficiente para el producto seleccionado.'
       using hint = 'stock_insuficiente';
   end if;
-  perform set_config('app_permite_stock_write', 'on', true);
+  perform set_config('app.permite_stock_write', 'on', true);
   update productos set stock = stock + p_delta where id_producto = p_producto;
-  perform set_config('app_permite_stock_write', 'off', true);
+  perform set_config('app.permite_stock_write', 'off', true);
 end $$;
 
 -- ================= Órdenes de trabajo: líneas y stock (RB-002/017) ==========

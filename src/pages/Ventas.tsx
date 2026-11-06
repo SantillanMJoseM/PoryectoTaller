@@ -141,6 +141,7 @@ function DetalleVenta({
   };
 
   const items: ItemVenta[] = (venta?.items_venta as ItemVenta[] | undefined) ?? [];
+  const editable = puedeEditar && !venta?.facturado;
 
   const imprimir = async () => {
     if (!venta) return;
@@ -207,14 +208,14 @@ function DetalleVenta({
                   <TableHead>Descripción</TableHead>
                   <TableHead className="text-right">Precio</TableHead>
                   <TableHead className="text-right">Subtotal</TableHead>
-                  {puedeEditar && <TableHead className="text-right">Quitar</TableHead>}
+                  {editable && <TableHead className="text-right">Quitar</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {items.map((i) => (
                   <TableRow key={i.id_item_venta}>
                     <TableCell>
-                      {puedeEditar ? (
+                      {editable ? (
                         <Input
                           type="number"
                           min="1"
@@ -233,7 +234,7 @@ function DetalleVenta({
                     <TableCell>{i.descripcion}</TableCell>
                     <TableCell className="text-right">{formatoDinero(i.precio)}</TableCell>
                     <TableCell className="text-right">{formatoDinero(i.subtotal)}</TableCell>
-                    {puedeEditar && (
+                    {editable && (
                       <TableCell className="text-right">
                         <Button
                           variant="ghost"
@@ -250,12 +251,12 @@ function DetalleVenta({
                 ))}
                 {items.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={puedeEditar ? 5 : 4} className="text-center text-muted-foreground">Sin ítems.</TableCell>
+                    <TableCell colSpan={editable ? 5 : 4} className="text-center text-muted-foreground">Sin ítems.</TableCell>
                   </TableRow>
                 )}
               </TableBody>
             </Table>
-            {puedeEditar && (
+            {editable && (
               <div className="mt-2 flex flex-wrap items-end gap-2">
                 <div className="relative min-w-48 flex-1">
                   <SearchIcon className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground" />

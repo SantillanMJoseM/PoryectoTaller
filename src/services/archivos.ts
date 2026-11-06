@@ -10,6 +10,7 @@
 import { crearCrud } from "../lib/crud";
 import { mensajeError } from "../lib/errores";
 import { formatoFecha } from "../lib/fechas";
+import { generarUuid } from "../lib/uuid";
 import { supabase } from "../lib/supabase";
 import type { Documento } from "../lib/types";
 
@@ -53,7 +54,7 @@ export const archivosService = {
   ): Promise<Documento> {
     if (archivo.size > LIMITE_BYTES) throw new Error("El archivo supera el límite de 20 MB.");
     const sanitizado = archivo.name.replace(/[^\w.\-]/g, "_");
-    const ruta = `${crypto.randomUUID()}-${sanitizado}`;
+    const ruta = `${generarUuid()}-${sanitizado}`;
     const { error: errUpload } = await supabase.storage
       .from("documentos")
       .upload(ruta, archivo, { upsert: false });
