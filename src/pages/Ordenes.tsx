@@ -878,6 +878,9 @@ export default function Ordenes() {
   const [nuevoEquipoOpen, setNuevoEquipoOpen] = useState(false);
   const [nuevoEquipo, setNuevoEquipo] = useState({ equipo: "", marca_id: "", modelo: "", color: "", condicion: "", numero_serie: "", numero_chasis: "", numero_motor: "" });
   const [guardandoEquipo, setGuardandoEquipo] = useState(false);
+  const [marcaModalOpenOrden, setMarcaModalOpenOrden] = useState(false);
+  const [nuevaMarcaOrden, setNuevaMarcaOrden] = useState("");
+  const [guardandoMarcaOrden, setGuardandoMarcaOrden] = useState(false);
   const [eliminando, setEliminando] = useState(false);
   const [facturarFila, setFacturarFila] = useState<OrdenConCliente | null>(null);
   const [factForm, setFactForm] = useState({ forma_pago: "", fecha_vencimiento: "", categoria_id: "", cuenta_id: "" });
@@ -1231,12 +1234,15 @@ export default function Ordenes() {
             </div>
             <div className="space-y-1">
               <Label>Marca</Label>
-              <SimpleSelect
-                value={nuevoEquipo.marca_id}
-                onChange={(v) => setNuevoEquipo({ ...nuevoEquipo, marca_id: v })}
-                opciones={marcas.map((m) => ({ valor: m.id_marca, etiqueta: m.marca }))}
-                placeholder="— Seleccione —"
-              />
+              <div className="flex gap-2">
+                <SimpleSelect
+                  value={nuevoEquipo.marca_id}
+                  onChange={(v) => setNuevoEquipo({ ...nuevoEquipo, marca_id: v })}
+                  opciones={marcas.map((m) => ({ valor: m.id_marca, etiqueta: m.marca }))}
+                  placeholder="— Seleccione —"
+                />
+                <Button type="button" variant="outline" size="sm" onClick={() => setMarcaModalOpenOrden(true)}>+ Agregar marca</Button>
+              </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1">
@@ -1309,6 +1315,43 @@ export default function Ordenes() {
                 }}
               >
                 {guardandoEquipo ? "Guardando…" : "Guardar equipo"}
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={marcaModalOpenOrden} onOpenChange={setMarcaModalOpenOrden}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Nueva marca</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label>Nombre</Label>
+              <Input value={nuevaMarcaOrden} onChange={(e) => setNuevaMarcaOrden(e.target.value)} />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setMarcaModalOpenOrden(false)} disabled={guardandoMarcaOrden}>Cancelar</Button>
+              <Button
+                type="button"
+                disabled={guardandoMarcaOrden || !nuevaMarcaOrden.trim()}
+                onClick={async () => {
+                  setGuardandoMarcaOrden(true);
+                  try {
+                    const creada = await catalogosService.marcas.crear({ marca: nuevaMarcaOrden });
+                    setMarcas((prev) => [...prev, creada as any]);
+                    setNuevoEquipo((prev) => ({ ...prev, marca_id: (creada as any).id_marca }));
+                    setMarcaModalOpenOrden(false);
+                    setNuevaMarcaOrden("");
+                  } catch (e) {
+                    alert(e instanceof Error ? e.message : "No se pudo guardar la marca.");
+                  } finally {
+                    setGuardandoMarcaOrden(false);
+                  }
+                }}
+              >
+                {guardandoMarcaOrden ? "Guardando…" : "Guardar"}
               </Button>
             </DialogFooter>
           </div>

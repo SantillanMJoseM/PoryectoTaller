@@ -19,7 +19,11 @@ export const catalogosService = {
     obtener: marcasCrud.obtener,
     crear: async (datos: Partial<Marca>) => {
       if (!datos.marca?.trim()) throw new Error("El nombre de la marca es obligatorio.");
-      return marcasCrud.crear({ ...datos, estado: datos.estado ?? true });
+      const existentes = await marcasCrud.listar({ tamPagina: 200, columna: "marca", ascendente: true });
+      const nombre = datos.marca.trim().toLowerCase();
+      if ((existentes.datos as Marca[]).some((m) => (m.marca ?? "").trim().toLowerCase() === nombre))
+        throw new Error("Ya existe una marca con ese nombre.");
+      return marcasCrud.crear({ ...datos, marca: datos.marca.trim(), estado: datos.estado ?? true });
     },
     editar: marcasCrud.editar,
     eliminar: marcasCrud.eliminar,

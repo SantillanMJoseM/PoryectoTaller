@@ -48,6 +48,8 @@ export interface CampoForm {
   ayuda?: string;
   /** Ajuste fino del valor tomado de la fila para precargar el formulario. */
   desdeFila?: (fila: Fila) => string | boolean;
+  /** Acción auxiliar junto al campo (p. ej. agregar marca). */
+  accion?: ReactNode;
 }
 
 export interface ColumnaFila {
@@ -437,6 +439,7 @@ export default function CrudPage({
                     onChange={(e) => setForm({ ...form, [c.clave]: e.target.value })}
                   />
                 )}
+                {c.accion && <div className="mt-1">{c.accion}</div>}
                 {c.ayuda && <p className="text-xs text-muted-foreground">{c.ayuda}</p>}
               </div>
             ))}

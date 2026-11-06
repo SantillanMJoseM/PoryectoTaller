@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import CrudPage, { type Fila } from "../components/CrudPage";
 import { useAuth } from "../contexts/AuthContext";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { catalogosService, clientesService } from "../services";
 import { supabase } from "../lib/supabase";
 import { formatoFecha } from "../lib/fechas";
@@ -66,6 +70,9 @@ export default function Equipos() {
   const { puede } = useAuth();
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [marcas, setMarcas] = useState<any[]>([]);
+  const [marcaModalOpen, setMarcaModalOpen] = useState(false);
+  const [nuevaMarca, setNuevaMarca] = useState("");
+  const [guardandoMarca, setGuardandoMarca] = useState(false);
 
   useEffect(() => {
     clientesService.listar({ tamPagina: 200, columna: "nombre_cliente", ascendente: true }).then((r) => setClientes(r.datos as Cliente[])).catch(() => setClientes([]));
@@ -87,6 +94,7 @@ export default function Equipos() {
   }, []);
 
   return (
+    <>
     <CrudPage
       titulo="Equipos"
       singular="Equipo"
@@ -105,7 +113,7 @@ export default function Equipos() {
       campos={[
         { clave: "cliente_id", etiqueta: "Cliente", tipo: "seleccion", obligatorio: true, opciones: clientes.map((c) => ({ valor: c.id_cliente, etiqueta: c.nombre_cliente })) },
         { clave: "equipo", etiqueta: "Equipo", obligatorio: true },
-        { clave: "marca_id", etiqueta: "Marca", tipo: "seleccion", opciones: marcas.map((m) => ({ valor: m.id_marca, etiqueta: m.marca })) },
+        { clave: "marca_id", etiqueta: "Marca", tipo: "seleccion", opciones: marcas.map((m) => ({ valor: m.id_marca, etiqueta: m.marca })), accion: <Button type="button" size="sm" variant="outline" onClick={() => setMarcaModalOpen(true)}>+ Agregar marca</Button> },
         { clave: "modelo", etiqueta: "Modelo" },
         { clave: "color", etiqueta: "Color" },
         { clave: "condicion", etiqueta: "Condición", tipo: "seleccion", opciones: [
@@ -130,5 +138,42 @@ export default function Equipos() {
       puedeEditar={puede(["eCliente"])}
       puedeEliminar={puede(["dCliente"])}
     />
+
+    <Dialog open={marcaModalOpen} onOpenChange={setMarcaModalOpen}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Nueva marca</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label>Nombre</Label>
+            <Input value={nuevaMarca} onChange={(e) => setNuevaMarca(e.target.value)} />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setMarcaModalOpen(false)} disabled={guardandoMarca}>Cancelar</Button>
+            <Button
+              type="button"
+              disabled={guardandoMarca || !nuevaMarca.trim()}
+              onClick={async () => {
+                setGuardandoMarca(true);
+                try {
+                  const creada = await catalogosService.marcas.crear({ marca: nuevaMarca });
+                  setMarcas((prev) => [...prev, creada as any]);
+                  setMarcaModalOpen(false);
+                  setNuevaMarca("");
+                } catch (e) {
+                  alert(e instanceof Error ? e.message : "No se pudo guardar la marca.");
+                } finally {
+                  setGuardandoMarca(false);
+                }
+              }}
+            >
+              {guardandoMarca ? "Guardando…" : "Guardar"}
+            </Button>
+          </DialogFooter>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
