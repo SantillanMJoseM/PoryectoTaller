@@ -542,7 +542,14 @@ function DetalleOrden({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>#</TableHead>
+                  <TableHead>Equipo</TableHead>
+                  <TableHead>Marca</TableHead>
+                  <TableHead>Modelo</TableHead>
+                  <TableHead>Serie</TableHead>
+                  <TableHead>Color</TableHead>
+                  <TableHead>Condición</TableHead>
+                  <TableHead>Chasis</TableHead>
+                  <TableHead>Motor</TableHead>
                   <TableHead>Defecto declarado</TableHead>
                   <TableHead className="text-right">Quitar</TableHead>
                 </TableRow>
@@ -550,7 +557,14 @@ function DetalleOrden({
               <TableBody>
                 {equiposOrden.map((eo) => (
                   <TableRow key={eo.id_equipo_orden}>
-                    <TableCell className="font-mono text-xs">{String(eo.equipo_id).slice(0, 8)}</TableCell>
+                    <TableCell>{eo.equipos?.equipo ?? "—"}</TableCell>
+                    <TableCell>{eo.equipos?.marcas?.marca ?? "—"}</TableCell>
+                    <TableCell>{eo.equipos?.modelo ?? "—"}</TableCell>
+                    <TableCell>{eo.equipos?.numero_serie ?? "—"}</TableCell>
+                    <TableCell>{eo.equipos?.color ?? "—"}</TableCell>
+                    <TableCell>{eo.equipos?.condicion ?? "—"}</TableCell>
+                    <TableCell>{eo.equipos?.numero_chasis ?? "—"}</TableCell>
+                    <TableCell>{eo.equipos?.numero_motor ?? "—"}</TableCell>
                     <TableCell>{eo.defecto_declarado ?? "—"}</TableCell>
                     <TableCell className="text-right">
                       <Button
@@ -572,7 +586,7 @@ function DetalleOrden({
                 ))}
                 {equiposOrden.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={3} className="text-center text-muted-foreground">
+                    <TableCell colSpan={10} className="text-center text-muted-foreground">
                       Sin equipos registrados.
                     </TableCell>
                   </TableRow>
@@ -1078,7 +1092,7 @@ export default function Ordenes() {
                   disabled={!form.cliente_id}
                 />
                 <Button type="button" variant="outline" onClick={() => setNuevoEquipoOpen(true)} disabled={!form.cliente_id}>
-                  + Cargar nuevo equipo
+                  + Cargar equipo
                 </Button>
               </div>
             </div>

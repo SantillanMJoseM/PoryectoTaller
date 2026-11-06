@@ -21,6 +21,7 @@ returns void
 language plpgsql security definer set search_path = public, pg_temp as $$
 declare v_stock numeric(12,2);
 begin
+  perform public.requerir_permiso('eProducto');
   select stock into v_stock from productos where id_producto = p_producto
      for update;
   if v_stock is null then
@@ -38,6 +39,7 @@ end $$;
 revoke execute on function public.ajustar_stock(uuid, numeric) from public;
 revoke execute on function public.ajustar_stock(uuid, numeric) from anon;
 revoke execute on function public.ajustar_stock(uuid, numeric) from authenticated;
+grant execute on function public.ajustar_stock(uuid, numeric) to authenticated;
 
 -- 2. Bloquear modificaciones de líneas cuando la venta está facturada
 create or replace function public.venta_agregar_item(

@@ -44,12 +44,21 @@ export const catalogosService = {
     eliminar: equiposCrud.eliminar,
   },
   equiposOrden: {
-    listarDeOrden: (idOrden: string) =>
-      equiposOrdenCrud.listar({
-        filtros: { orden_id: idOrden },
-        columna: "id_equipo_orden",
-        ascendente: true,
-      }),
+    listarDeOrden: async (idOrden: string) => {
+      const { data, error, count } = await supabase
+        .from("equipos_orden")
+        .select("*, equipos:equipo_id(*, marcas:marca_id(marca))", { count: "exact" })
+        .eq("orden_id", idOrden)
+        .order("id_equipo_orden", { ascending: true });
+      if (error) throw new Error(mensajeError(error));
+      return {
+        datos: (data ?? []) as EquipoOrden[],
+        total: count ?? data?.length ?? 0,
+        pagina: 1,
+        tamPagina: data?.length ?? 0,
+        paginas: 1,
+      };
+    },
     agregar: async (datos: Omit<EquipoOrden, "id_equipo_orden">) => {
       if (!datos.orden_id || !datos.equipo_id)
         throw new Error("Orden y equipo son obligatorios.");
