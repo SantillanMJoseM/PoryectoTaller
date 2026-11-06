@@ -7,6 +7,7 @@
 // ============================================================================
 
 import { crearCrud } from "../lib/crud";
+import { supabase } from "../lib/supabase";
 import type { Equipo, EquipoOrden, Marca } from "../lib/types";
 
 const marcasCrud = crearCrud<Marca>("marcas", "id_marca", ["marca"]);
