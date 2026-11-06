@@ -410,6 +410,8 @@ export default function CrudPage({
             {campos.map((c) => (
               <div key={c.clave} className="space-y-1">
                 <Label>{c.etiqueta}{c.obligatorio ? " *" : ""}</Label>
+                <div className="flex items-end gap-2">
+              <div className="flex-1">
                 {c.tipo === "parrafo" ? (
                   <Textarea
                     rows={3}
@@ -439,8 +441,10 @@ export default function CrudPage({
                     onChange={(e) => setForm({ ...form, [c.clave]: e.target.value })}
                   />
                 )}
-                {c.accion && <div className="mt-1">{c.accion}</div>}
-                {c.ayuda && <p className="text-xs text-muted-foreground">{c.ayuda}</p>}
+              </div>
+              {c.accion && <div className="shrink-0">{c.accion}</div>}
+            </div>
+            {c.ayuda && <p className="text-xs text-muted-foreground">{c.ayuda}</p>}
               </div>
             ))}
             {errorForm && <p className="text-sm text-destructive">{errorForm}</p>}

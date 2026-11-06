@@ -774,19 +774,6 @@ export default function Ordenes() {
       .catch(() => setMarcas([]));
   }, []);
 
-  useEffect(() => {
-    if (!form.cliente_id) {
-      setEquiposClienteForm([]);
-      setEquipoSelForm("");
-      return;
-    }
-    catalogosService.equipos
-      .listar(form.cliente_id)
-      .then((r) => setEquiposClienteForm((r as { datos?: Equipo[] })?.datos ?? []))
-      .catch(() => setEquiposClienteForm([]));
-    setEquipoSelForm("");
-  }, [form.cliente_id]);
-
   const nombreCliente = useMemo(() => {
     const m = new Map<string, string>();
     for (const c of clientes) m.set(c.id_cliente, c.nombre_cliente);
@@ -885,6 +872,19 @@ export default function Ordenes() {
   const [facturarFila, setFacturarFila] = useState<OrdenConCliente | null>(null);
   const [factForm, setFactForm] = useState({ forma_pago: "", fecha_vencimiento: "", categoria_id: "", cuenta_id: "" });
   const [facturando, setFacturando] = useState(false);
+
+  useEffect(() => {
+    if (!form.cliente_id) {
+      setEquiposClienteForm([]);
+      setEquipoSelForm("");
+      return;
+    }
+    catalogosService.equipos
+      .listar(form.cliente_id)
+      .then((r) => setEquiposClienteForm((r as { datos?: Equipo[] })?.datos ?? []))
+      .catch(() => setEquiposClienteForm([]));
+    setEquipoSelForm("");
+  }, [form.cliente_id]);
 
   const facturar = async () => {
     if (!facturarFila) return;
