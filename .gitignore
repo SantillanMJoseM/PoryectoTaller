@@ -11,6 +11,13 @@ node_modules
 dist
 dist-ssr
 *.local
+*.tsbuildinfo
+
+# Entorno local, temporales de Supabase CLI y secretos — NO versionar
+supabase/.temp
+.env
+.env.local
+docs/deployment/LOCAL_CREDENTIALS.md
 
 # Editor directories and files
 .vscode/*

@@ -76,7 +76,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         if (!montado) return;
         setSesion(s);
-        setUser(s ? await usuarioSupabase() : null);
+        // La sesión de Supabase se conserva aunque falle la carga del perfil:
+        // no se expulsa al usuario por un error transitorio de la BD/PostgREST.
+        setUser(await usuarioSupabase());
       } catch {
         if (!montado) return;
         setSesion(null);

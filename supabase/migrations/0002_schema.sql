@@ -345,7 +345,7 @@ create or replace view v_movimientos_situacion with (security_invoker = true) as
            when m.fecha_vencimiento < current_date then 'atrasado'
            when m.fecha_vencimiento > current_date then 'previsto'
            else 'pendiente'
-         end as situacion;                                     -- RB-026
+         end as situacion                                     -- RB-026
     from movimientos_financieros m;
 
 create or replace view v_cliente_vinculos with (security_invoker = true) as

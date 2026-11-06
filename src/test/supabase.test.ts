@@ -15,7 +15,7 @@ import {
 describe("cliente supabase (TASK-0008)", () => {
   it("expone los buckets privados de la migración 0005", () => {
     expect(BUCKETS.documentos).toBe("documentos");
-    expect(BUCKETS.anexos).toBe("anexos");
+    expect(BUCKETS.anexos).toBe("anexos-orden");
   });
 
   it("límite de almacenamiento de 20 MB", () => {

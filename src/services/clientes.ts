@@ -51,7 +51,7 @@ export const clientesService = {
   /** Búsqueda rápida por el término libre (autocompletado). */
   async autocompletar(q: string, limite = 10): Promise<Cliente[]> {
     if (!q || q.trim().length < 1) return [];
-    const patron = `%${q.trim()}%`;
+    const patron = `%${q.trim().replace(/[%_(),]/g, "")}%`;
     const { data, error } = await supabase
       .from("clientes")
       .select("id_cliente, nombre_cliente, documento, correo")

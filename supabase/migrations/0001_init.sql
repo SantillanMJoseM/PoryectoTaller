@@ -24,7 +24,7 @@ create table if not exists usuarios (
   nombre text,
   rg text,
   cpf text,
-  calle text, numero text, barrio text, ciudad text, estado text,
+  calle text, numero text, barrio text, ciudad text,
   correo text unique,
   contrasena text,
   telefono text,

@@ -26,7 +26,9 @@ export interface Crud<T> {
 
 /** Normaliza el texto de búsqueda por columnas ilike (⁎q⁎). */
 function condicionBusqueda(q: string, camposBusqueda: string[]) {
-  const patron = `%${q.replace(/[%_]/g, (m) => `\\${m}`)}%`;
+  // Evita inyección de separadores PostgREST (, ( )) y wildcards no deseados.
+  const limpio = q.replace(/[(),]/g, "").trim();
+  const patron = `%${limpio.replace(/[%_]/g, (m) => `\\${m}`)}%`;
   const or = camposBusqueda.map((c) => `${c}.ilike.${patron}`).join(",");
   return or;
 }

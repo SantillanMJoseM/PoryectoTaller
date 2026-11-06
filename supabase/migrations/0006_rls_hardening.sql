@@ -14,12 +14,12 @@ alter table logs_auditoria enable row level security;
 alter table cola_emails enable row level security;
 
 -- Políticas base para tablas sin política previa (authenticated full, anon read-only donde aplica)
-create policy if not exists "auth all marcas" on marcas for all to authenticated using (true) with check (true);
-create policy if not exists "auth all equipos" on equipos for all to authenticated using (true) with check (true);
-create policy if not exists "auth all productos_orden" on productos_orden for all to authenticated using (true) with check (true);
-create policy if not exists "auth all servicios_orden" on servicios_orden for all to authenticated using (true) with check (true);
-create policy if not exists "auth all equipos_orden" on equipos_orden for all to authenticated using (true) with check (true);
-create policy if not exists "auth all anexos" on anexos for all to authenticated using (true) with check (true);
-create policy if not exists "auth all items_venta" on items_venta for all to authenticated using (true) with check (true);
-create policy if not exists "auth all logs_auditoria" on logs_auditoria for all to authenticated using (true) with check (true);
-create policy if not exists "auth all cola_emails" on cola_emails for all to authenticated using (true) with check (true);
+create policy "auth all marcas" on marcas for all to authenticated using (true) with check (true);
+create policy "auth all equipos" on equipos for all to authenticated using (true) with check (true);
+create policy "auth all productos_orden" on productos_orden for all to authenticated using (true) with check (true);
+create policy "auth all servicios_orden" on servicios_orden for all to authenticated using (true) with check (true);
+create policy "auth all equipos_orden" on equipos_orden for all to authenticated using (true) with check (true);
+create policy "auth all anexos" on anexos for all to authenticated using (true) with check (true);
+create policy "auth all items_venta" on items_venta for all to authenticated using (true) with check (true);
+create policy "auth all logs_auditoria" on logs_auditoria for all to authenticated using (true) with check (true);
+create policy "auth all cola_emails" on cola_emails for all to authenticated using (true) with check (true);

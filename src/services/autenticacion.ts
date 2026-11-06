@@ -45,11 +45,15 @@ export const autenticacionService = {
     if (!authUser?.email) throw new Error("Credenciales incompletas.");
 
     // Datos del taller (tabla usuarios) para nombre y permisos.
-    const { data: usuario } = await supabase
+    const { data: usuario, error: errorPerfil } = await supabase
       .from("usuarios")
-      .select("*, permisos:id_permiso(*)")
+      .select("*, permisos:permiso_id(*)")
       .eq("correo", authUser.email)
       .maybeSingle();
+
+    if (errorPerfil) {
+      throw new Error("No se pudo cargar el perfil del usuario. Intente nuevamente.");
+    }
 
     const grupo = Array.isArray(usuario?.permisos)
       ? (usuario as { permisos: Permiso[] }).permisos[0]
@@ -105,7 +109,7 @@ export const autenticacionService = {
     if (!authUser?.email) return null;
     const { data: usuario } = await supabase
       .from("usuarios")
-      .select("*, permisos:id_permiso(*)")
+      .select("*, permisos:permiso_id(*)")
       .eq("correo", authUser.email)
       .maybeSingle();
     const grupo = Array.isArray(usuario?.permisos)

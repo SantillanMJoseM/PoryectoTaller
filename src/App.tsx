@@ -14,6 +14,23 @@ import { useAuth } from "./contexts/AuthContext";
 import Layout from "./components/Layout";
 import LoginPage from "./pages/LoginPage";
 
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Clientes = lazy(() => import("./pages/Clientes"));
+const Productos = lazy(() => import("./pages/Productos"));
+const Servicios = lazy(() => import("./pages/Servicios"));
+const Ordenes = lazy(() => import("./pages/Ordenes"));
+const Ventas = lazy(() => import("./pages/Ventas"));
+const Garantias = lazy(() => import("./pages/Garantias"));
+const Financiero = lazy(() => import("./pages/Financiero"));
+const Documentos = lazy(() => import("./pages/Documentos"));
+const Usuarios = lazy(() => import("./pages/Usuarios"));
+const Permisos = lazy(() => import("./pages/Permisos"));
+const Reportes = lazy(() => import("./pages/Reportes"));
+const Auditoria = lazy(() => import("./pages/Auditoria"));
+const Emails = lazy(() => import("./pages/Emails"));
+const Empresa = lazy(() => import("./pages/Empresa"));
+const Portal = lazy(() => import("./pages/Portal"));
+
 /** Rutas con los códigos de actividad que habilitan cada módulo. */
 const RUTAS: { ruta: string; elemento: React.ReactNode; codigos: string[] }[] = [
   { ruta: "/", elemento: <Dashboard />, codigos: [] },
@@ -37,23 +54,6 @@ const RUTAS: { ruta: string; elemento: React.ReactNode; codigos: string[] }[] = 
   { ruta: "/empresa", elemento: <Empresa />, codigos: ["cEmpresa", "eEmpresa", "vEmpresa"] },
 ];
 
-
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Clientes = lazy(() => import("./pages/Clientes"));
-const Productos = lazy(() => import("./pages/Productos"));
-const Servicios = lazy(() => import("./pages/Servicios"));
-const Ordenes = lazy(() => import("./pages/Ordenes"));
-const Ventas = lazy(() => import("./pages/Ventas"));
-const Garantias = lazy(() => import("./pages/Garantias"));
-const Financiero = lazy(() => import("./pages/Financiero"));
-const Documentos = lazy(() => import("./pages/Documentos"));
-const Usuarios = lazy(() => import("./pages/Usuarios"));
-const Permisos = lazy(() => import("./pages/Permisos"));
-const Reportes = lazy(() => import("./pages/Reportes"));
-const Auditoria = lazy(() => import("./pages/Auditoria"));
-const Emails = lazy(() => import("./pages/Emails"));
-const Empresa = lazy(() => import("./pages/Empresa"));
-const Portal = lazy(() => import("./pages/Portal"));
 
 function Guard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();

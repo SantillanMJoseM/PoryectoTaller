@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+echo "== docker compose ps =="
 docker compose ps
-docker compose logs --tail=100
+
+echo
+echo "== supabase status =="
+supabase status

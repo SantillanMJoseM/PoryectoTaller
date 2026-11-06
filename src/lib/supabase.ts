@@ -48,7 +48,7 @@ export function avisoConfiguracion(): string | null {
 /** Buckets privados del sistema. El acceso pasa por firmas URL de 1 hora. */
 export const BUCKETS = {
   documentos: "documentos",
-  anexos: "anexos",
+  anexos: "anexos-orden",
 } as const;
 
 export type NombreBucket = (typeof BUCKETS)[keyof typeof BUCKETS];
