@@ -7,6 +7,7 @@
 // ============================================================================
 
 import { crearCrud } from "../lib/crud";
+import { mensajeError } from "../lib/errores";
 import { supabase } from "../lib/supabase";
 import type { Equipo, EquipoOrden, Marca } from "../lib/types";
 
@@ -30,9 +31,12 @@ export const catalogosService = {
     eliminar: marcasCrud.eliminar,
   },
   equipos: {
-    listar: (idCliente?: string) =>
+    listar: (idCliente?: string, q?: string, opciones?: { pagina?: number; tamPagina?: number }) =>
       equiposCrud.listar({
+        q: q ?? "",
         filtros: idCliente ? { cliente_id: idCliente } : {},
+        pagina: opciones?.pagina,
+        tamPagina: opciones?.tamPagina,
         columna: "equipo",
         ascendente: true,
       }),

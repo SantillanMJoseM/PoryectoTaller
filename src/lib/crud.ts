@@ -70,7 +70,7 @@ export function crearCrud<T extends Record<string, any>>(
       if (error) throw new Error(mensajeError(error));
       const total = count ?? data?.length ?? 0;
       return {
-        datos: (data ?? []) as T[],
+        datos: (data ?? []) as unknown as T[],
         total,
         pagina,
         tamPagina,
@@ -95,7 +95,7 @@ export function crearCrud<T extends Record<string, any>>(
         .select(selectPorDefecto)
         .single();
       if (error) throw new Error(mensajeError(error));
-      return data as T;
+      return data as unknown as T;
     },
 
     async editar(id: string, datos: Partial<any>): Promise<T> {
@@ -106,7 +106,7 @@ export function crearCrud<T extends Record<string, any>>(
         .select(selectPorDefecto)
         .single();
       if (error) throw new Error(mensajeError(error));
-      return data as T;
+      return data as unknown as T;
     },
 
     async eliminar(id: string): Promise<void> {

@@ -32,6 +32,6 @@ describe("cliente supabase (TASK-0008)", () => {
   it("rutaSegura sanitiza el nombre y antepone un uuid", () => {
     const ruta = rutaSegura("factura 2026 (final).pdf");
     expect(ruta).toMatch(/^[0-9a-f-]{36}-factura_2026__final_\.pdf$/);
-    expect(rutaSegura("a/../b@x.png")).not.toMatch(/[\/@]/);
+    expect(rutaSegura("a/../b@x.png")).not.toMatch(/[/@]/);
   });
 });

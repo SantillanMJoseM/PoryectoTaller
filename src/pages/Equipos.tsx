@@ -20,11 +20,11 @@ function DetalleEquipo({ equipo, clientes, marcas }: { equipo: Equipo; clientes:
 
   useEffect(() => {
     setCargando(true);
-    supabase
+    Promise.resolve(supabase
       .from("equipos_orden")
       .select("*, ordenes_trabajo:orden_id(id_orden, fecha_inicial, estado, defecto, usuario_id, usuarios:usuario_id(nombre))")
       .eq("equipo_id", equipo.id_equipo)
-      .order("id_equipo_orden", { ascending: false })
+      .order("id_equipo_orden", { ascending: false }))
       .then(({ data, error }) => {
         if (error) throw error;
         setHistorial((data ?? []) as any[]);
@@ -132,7 +132,6 @@ export default function Equipos() {
       listar={listar}
       guardar={guardar}
       eliminar={eliminar}
-      clave={(f) => String((f as any).id_equipo)}
       ver={(f) => <DetalleEquipo equipo={comoEquipo(f)} clientes={clientes} marcas={marcas} />}
       puedeAgregar={puede(["aCliente"])}
       puedeEditar={puede(["eCliente"])}

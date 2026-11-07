@@ -63,7 +63,7 @@ function textoValor(valor: unknown, tipo: ColumnaPdf["tipo"]): string {
 }
 
 /** Encabezado de empresa + título. Devuelve la Y donde sigue el contenido. */
-function dibujarCabecera(doc: jsPDF, opciones: OpcionesPdfTabla): number {
+function dibujarCabecera(doc: jsPDF, opciones: { titulo: string; subtitulo?: string; empresa?: DatosEmpresaPdf }): number {
   const e = opciones.empresa;
   // Logo (si viene como data URL) en la esquina superior derecha.
   if (e?.logo) {

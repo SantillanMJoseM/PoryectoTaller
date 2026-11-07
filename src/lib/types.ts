@@ -225,6 +225,8 @@ export interface EquipoOrden {
   defecto_declarado?: string | null;
   defecto_encontrado?: string | null;
   solucion?: string | null;
+  /** Relación cargada por la consulta (equipo + marca). */
+  equipos?: (Equipo & { marcas?: { marca?: string | null } | null }) | null;
 }
 
 export interface Usuario {

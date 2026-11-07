@@ -30,6 +30,15 @@ if [ ! -f .env ]; then
   echo "Generando secretos..."
   sh utils/generate-keys.sh --update-env >/dev/null
   sh utils/add-new-auth-keys.sh --update-env >/dev/null || true
+  # Generar contraseña interna del portal si falta
+  if ! grep -q '^PORTAL_CLIENT_PASSWORD=.' .env; then
+    pp="$(openssl rand -hex 16)"
+    if grep -q '^PORTAL_CLIENT_PASSWORD=' .env; then
+      sed -i "s|^PORTAL_CLIENT_PASSWORD=.*|PORTAL_CLIENT_PASSWORD=${pp}|" .env
+    else
+      echo "PORTAL_CLIENT_PASSWORD=${pp}" >> .env
+    fi
+  fi
 fi
 
 # Host público (opcional): --host http://IP

@@ -113,7 +113,7 @@ export function validarOrden(o: {
   if (!o.estado || !ESTADOS.includes(o.estado as EstadoOrden))
     campos.estado = "Estado de orden inválido.";
   if (o.fecha_inicial && !esFechaISO(o.fecha_inicial)) campos.fecha_inicial = "Fecha inicial inválida.";
-  if (o.fecha_final && esFechaISO(o.fecha_inicial) && o.fecha_final < o.fecha_inicial.slice(0, 10))
+  if (o.fecha_final && o.fecha_inicial && esFechaISO(o.fecha_inicial) && o.fecha_final < (o.fecha_inicial as string).slice(0, 10))
     campos.fecha_final = "La fecha final no puede ser anterior a la inicial.";
   if (!o.cliente_id) campos.cliente_id = "Debe seleccionar un cliente.";
   if (!o.usuario_id) campos.usuario_id = "Debe seleccionar un usuario/técnico.";

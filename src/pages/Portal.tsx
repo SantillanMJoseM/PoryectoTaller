@@ -161,6 +161,21 @@ function PanelPortal({ onSalir }: { onSalir: () => void }) {
       setVentas(v);
       setDatos(c);
       setEmpresa(e);
+      if (c) {
+        setMiCuenta({
+          nombre_cliente: c.nombre_cliente ?? "",
+          sexo: c.sexo ?? "",
+          persona_fisica: c.persona_fisica ? "si" : "no",
+          telefono: c.telefono ?? "",
+          celular: c.celular ?? "",
+          calle: c.calle ?? "",
+          numero: c.numero ?? "",
+          barrio: c.barrio ?? "",
+          ciudad: c.ciudad ?? "",
+          estado: c.estado ?? "",
+          codigo_postal: c.codigo_postal ?? "",
+        });
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudieron cargar sus datos.");
     } finally {
@@ -171,23 +186,6 @@ function PanelPortal({ onSalir }: { onSalir: () => void }) {
   useEffect(() => {
     void cargarTodo();
   }, [cargarTodo]);
-
-  useEffect(() => {
-    if (!datos) return;
-    setMiCuenta({
-      nombre_cliente: datos.nombre_cliente ?? "",
-      sexo: datos.sexo ?? "",
-      persona_fisica: datos.persona_fisica ? "si" : "no",
-      telefono: datos.telefono ?? "",
-      celular: datos.celular ?? "",
-      calle: datos.calle ?? "",
-      numero: datos.numero ?? "",
-      barrio: datos.barrio ?? "",
-      ciudad: datos.ciudad ?? "",
-      estado: datos.estado ?? "",
-      codigo_postal: datos.codigo_postal ?? "",
-    });
-  }, [datos]);
 
   const guardarCuenta = async () => {
     if (!idCliente) return;

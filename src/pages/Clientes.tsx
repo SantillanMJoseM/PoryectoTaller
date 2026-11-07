@@ -64,7 +64,7 @@ function PanelCliente({ cliente }: { cliente: Cliente }) {
       catalogosService.equipos.listar(cliente.id_cliente).catch(() => ({ datos: [] })),
       ordenesService.listarFiltradas({ clienteId: cliente.id_cliente, tamPagina: 100 }).catch(() => ({ datos: [] })),
       ventasService.listarFiltradas({ clienteId: cliente.id_cliente, tamPagina: 100 }).catch(() => ({ datos: [] })),
-      supabase.from("movimientos_financieros").select("*").eq("cliente_id", cliente.id_cliente).then((r) => r.data ?? []).catch(() => []),
+      Promise.resolve(supabase.from("movimientos_financieros").select("*").eq("cliente_id", cliente.id_cliente)).then((r) => r.data ?? []).catch(() => []),
     ]).then(([eq, or, ve, mv]) => {
       if (!montado) return;
       setEquipos(((eq as any)?.datos ?? []) as Equipo[]);
