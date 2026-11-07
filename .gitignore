@@ -29,3 +29,9 @@ docs/deployment/LOCAL_CREDENTIALS.md
 *.njsproj
 *.sln
 *.sw?
+
+# Factory artifacts / runtime (no publicar)
+.factory
+volumes/db/data
+volumes/storage
+backups
