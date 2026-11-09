@@ -136,8 +136,8 @@ export const autenticacionService = {
   async crearCredencial(correo: string, contrasena: string): Promise<void> {
     const errorContrasena = validarContrasenaValor(contrasena);
     if (errorContrasena) throw new Error(errorContrasena);
-    const { error } = await supabase.functions.invoke("crear-usuario-admin", {
-      body: { correo, contrasena },
+    const { error } = await supabase.functions.invoke("admin-usuarios", {
+      body: { action: "crearCredencial", correo, contrasena },
     });
     if (error) {
       throw new Error(

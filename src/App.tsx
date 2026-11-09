@@ -13,6 +13,7 @@ import { lazy, Suspense } from "react";
 import { useAuth } from "./contexts/AuthContext";
 import Layout from "./components/Layout";
 import LoginPage from "./pages/LoginPage";
+const CambiarPassword = lazy(() => import("./pages/CambiarPassword"));
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Clientes = lazy(() => import("./pages/Clientes"));
@@ -58,9 +59,10 @@ const RUTAS: { ruta: string; elemento: React.ReactNode; codigos: string[] }[] = 
 
 
 function Guard({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, debeCambiarContrasena } = useAuth();
   if (loading) return <div className="p-6 text-sm text-muted-foreground">Cargando…</div>;
   if (!user) return <Navigate to="/login" replace />;
+  if (debeCambiarContrasena) return <Navigate to="/cambiar-password" replace />;
   return <>{children}</>;
 }
 
@@ -80,7 +82,7 @@ function RutaPermisos({ codigos, children }: { codigos: string[]; children: Reac
 }
 
 export default function App() {
-  const { user, loading } = useAuth();
+  const { user, loading, debeCambiarContrasena } = useAuth();
   if (loading) return <div className="p-6 text-sm text-muted-foreground">Cargando…</div>;
 
   return (
@@ -90,6 +92,12 @@ export default function App() {
       <Route
         path="/login"
         element={user ? <Navigate to="/" replace /> : <LoginPage />}
+      />
+
+      {/* Cambio obligatorio de contraseña */}
+      <Route
+        path="/cambiar-password"
+        element={user ? <CambiarPassword /> : <Navigate to="/login" replace />}
       />
 
       {/* Portal del cliente (ingreso por correo + documento) */}

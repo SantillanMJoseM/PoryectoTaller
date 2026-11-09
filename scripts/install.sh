@@ -39,6 +39,16 @@ if [ ! -f .env ]; then
       echo "PORTAL_CLIENT_PASSWORD=${pp}" >> .env
     fi
   fi
+
+  # Generar contraseña inicial del administrador si falta
+  if ! grep -q '^ADMIN_INITIAL_PASSWORD=.' .env; then
+    ap="$(openssl rand -base64 18 | tr -d '\n')"
+    if grep -q '^ADMIN_INITIAL_PASSWORD=' .env; then
+      sed -i "s|^ADMIN_INITIAL_PASSWORD=.*|ADMIN_INITIAL_PASSWORD=${ap}|" .env
+    else
+      echo "ADMIN_INITIAL_PASSWORD=${ap}" >> .env
+    fi
+  fi
 fi
 
 # Host público (opcional): --host http://IP
@@ -96,6 +106,24 @@ for i in $(seq 1 30); do
 done
 docker compose exec -T db psql -U postgres -d postgres -v ON_ERROR_STOP=0 < volumes/db/storage-migrations.sql >/tmp/opencode/storage-mig.log 2>&1 || true
 cat /tmp/opencode/storage-mig.log | tail -5
+
+# Esperar a que Edge Functions esté disponible
+for i in $(seq 1 30); do
+  if docker compose ps functions 2>/dev/null | grep -q healthy; then break; fi
+  sleep 2
+done
+sleep 8
+
+# Crear administrador inicial si no existe (idempotente)
+ADMIN_EMAIL="admin@taller.com"
+ADMIN_PASS="$(grep '^ADMIN_INITIAL_PASSWORD=' .env | cut -d= -f2-)"
+SERVICE_KEY="$(grep '^SERVICE_ROLE_KEY=' .env | cut -d= -f2-)"
+API_URL="$(grep '^SUPABASE_PUBLIC_URL=' .env | cut -d= -f2-)"
+if [ -n "$ADMIN_PASS" ] && [ -n "$SERVICE_KEY" ]; then
+  echo "Inicializando administrador inicial (${ADMIN_EMAIL})..."
+  curl -s -X POST "${API_URL}/functions/v1/admin-usuarios"     -H "Authorization: Bearer ${SERVICE_KEY}"     -H "apikey: ${SERVICE_KEY}"     -H 'Content-Type: application/json'     -d "{\"action\":\"bootstrap\",\"correo\":\"${ADMIN_EMAIL}\",\"contrasena\":\"${ADMIN_PASS}\",\"nombre\":\"Administrador\",\"usuario_id\":\"00000000-0000-4000-8000-000000000011\"}"     >/tmp/opencode/bootstrap.log 2>&1 || true
+  cat /tmp/opencode/bootstrap.log | tail -3
+fi
 
 sleep 5
 docker compose ps

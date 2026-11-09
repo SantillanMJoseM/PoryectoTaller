@@ -243,6 +243,7 @@ export interface Usuario {
   telefono?: string | null;
   celular?: string | null;
   estado_usuario: boolean; // activo/inactivo
+  debe_cambiar_contrasena?: boolean;
   fecha_registro?: string;
   permiso_id?: string | null;
   fecha_expiracion?: string | null;

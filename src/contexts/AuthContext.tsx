@@ -35,6 +35,8 @@ interface AuthCtx {
   signOut: () => Promise<void>;
   /** ¿La sesión tiene alguno de los códigos pedidos (p. ej. ["aCliente", "vCliente"])? */
   puede: (codigos: string[]) => boolean;
+  /** ¿Debe cambiar la contraseña antes de acceder? */
+  debeCambiarContrasena: boolean;
 }
 
 const Ctx = createContext<AuthCtx>({
@@ -45,12 +47,14 @@ const Ctx = createContext<AuthCtx>({
   signIn: async () => null,
   signOut: async () => {},
   puede: () => false,
+  debeCambiarContrasena: false,
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [sesion, setSesion] = useState<SesionAdmin | null>(null);
   const [loading, setLoading] = useState(true);
+  const [debeCambiarContrasena, setDebeCambiarContrasena] = useState(false);
 
   useEffect(() => {
     let montado = true;
@@ -76,6 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         if (!montado) return;
         setSesion(s);
+        setDebeCambiarContrasena(Boolean(s?.usuario?.debe_cambiar_contrasena));
         // La sesión de Supabase se conserva aunque falle la carga del perfil:
         // no se expulsa al usuario por un error transitorio de la BD/PostgREST.
         setUser(await usuarioSupabase());
@@ -104,6 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const s = await autenticacionService.iniciar(correo, contrasena);
       setSesion(s);
+      setDebeCambiarContrasena(Boolean(s?.usuario?.debe_cambiar_contrasena));
       setUser(await usuarioSupabase());
       return null;
     } catch (error) {
@@ -127,7 +133,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <Ctx.Provider value={{ user, sesion, loading, permisos: sesion?.permisos ?? [], signIn, signOut, puede }}>
+    <Ctx.Provider value={{ user, sesion, loading, permisos: sesion?.permisos ?? [], signIn, signOut, puede, debeCambiarContrasena }}>
       {children}
     </Ctx.Provider>
   );
