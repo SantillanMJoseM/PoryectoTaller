@@ -13,6 +13,7 @@ export interface CrudConfig {
   portalFilter?: (userId: string) => any;
   guardUpdate?: (id: string, data: any) => Promise<void>;
   guardDelete?: (id: string) => Promise<void>;
+  sortableFields?: string[];
 }
 
 function model() { return prisma as any; }
@@ -40,10 +41,22 @@ export function buildCrudRouter(cfg: CrudConfig, authMw: any, permMw: (c: string
       for (const [k, v] of Object.entries(req.query)) {
         if (["pagina", "tamPagina", "q", "columna", "ascendente"].includes(k)) continue;
         if (v === undefined || v === null || v === "") continue;
-        where[k] = v;
+        let val: any = v;
+        if (val === "true") val = true;
+        if (val === "false") val = false;
+        where[k] = val;
       }
       const orderBy: any = {};
-      if (req.query.columna) orderBy[req.query.columna as string] = (req.query.ascendente === "true") ? "asc" : "desc";
+      if (req.query.columna) {
+        const snake = String(req.query.columna);
+        const camel = snake.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+        if (cfg.sortableFields && cfg.sortableFields.length > 0) {
+          if (!cfg.sortableFields.includes(camel)) {
+            throw new HttpError(400, `Columna de ordenamiento no válida: ${snake}`);
+          }
+        }
+        orderBy[camel] = (req.query.ascendente === "true") ? "asc" : "desc";
+      }
       const [data, total] = await Promise.all([
         M().findMany({ where, skip, take: size, orderBy: Object.keys(orderBy).length ? orderBy : undefined }),
         M().count({ where }),
