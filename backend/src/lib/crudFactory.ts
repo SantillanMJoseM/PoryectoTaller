@@ -50,7 +50,6 @@ export function buildCrudRouter(cfg: CrudConfig, authMw: any, permMw: (c: string
       if (req.query.columna) {
         const snake = String(req.query.columna);
         const camel = snake.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
-        console.log("DEBUG crudFactory", "columna=", req.query.columna, "camel=", camel, "sortable=", JSON.stringify(cfg.sortableFields));
         if (cfg.sortableFields && cfg.sortableFields.length > 0) {
           if (!cfg.sortableFields.includes(camel)) {
             throw new HttpError(400, `Columna de ordenamiento no válida: ${snake}`);

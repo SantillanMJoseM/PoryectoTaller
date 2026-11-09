@@ -51,7 +51,8 @@ app.use((req, _res, next) => {
 import { requirePermission } from "./middleware/auth.js";
 
 function crud(model: string, pk: string, search: string[], permisos: any) {
-  return buildCrudRouter({ model, pk, searchFields: search, permisos }, requireAuth, requirePermission);
+  const { sortableFields, guardUpdate, guardDelete, portalFilter, ...rest } = permisos || {};
+  return buildCrudRouter({ model, pk, searchFields: search, permisos: rest, sortableFields, guardUpdate, guardDelete, portalFilter }, requireAuth, requirePermission);
 }
 
 // Register crud routers
