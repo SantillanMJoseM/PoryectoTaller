@@ -94,7 +94,7 @@ else
   ADMIN_PASS="$(openssl rand -base64 18 | tr -d '/+=' | head -c 20)A1"
   cat > "$ENV_FILE" <<EOF
 # Generado por install-postgresql.sh — $(date -u)
-VITE_API_URL=http://${SERVER_IP}:4000
+VITE_API_URL=
 
 DATABASE_URL=postgresql://taller:${PG_PASS}@postgres:5432/taller
 JWT_ACCESS_SECRET=${JWT_ACCESS}
@@ -102,7 +102,7 @@ JWT_REFRESH_SECRET=${JWT_REFRESH}
 ACCESS_TOKEN_TTL=15m
 REFRESH_TOKEN_TTL=7d
 STORAGE_DIR=/data/storage
-CORS_ORIGIN=http://${SERVER_IP}:8080
+CORS_ORIGIN=*
 ADMIN_EMAIL=admin@taller.com
 ADMIN_PASSWORD=${ADMIN_PASS}
 FORCE_PASSWORD_CHANGE=true

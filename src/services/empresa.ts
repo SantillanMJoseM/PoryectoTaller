@@ -46,9 +46,9 @@ export const empresaService = {
     const ruta = `${generarUuid()}-${sanitizado}`;
     const fd = new FormData();
     fd.append("file", archivo);
-    const res = await fetch(`${apiObj["get"] ? "" : ""}${(import.meta.env.VITE_API_URL||"http://localhost:4000")}/api/storage/upload?bucket=logos`, { method:"POST", headers:{Authorization:`Bearer ${localStorage.getItem("st_access_token")}`}, body: fd });
+    const res = await fetch(`${apiObj["get"] ? "" : ""}${(import.meta.env.VITE_API_URL||"")}/api/storage/upload?bucket=logos`, { method:"POST", headers:{Authorization:`Bearer ${localStorage.getItem("st_access_token")}`}, body: fd });
     const up = await res.json();
-    const url = `${(import.meta.env.VITE_API_URL||"http://localhost:4000")}/api/storage/download?bucket=logos&ruta=${encodeURIComponent(up.ruta)}`;
+    const url = `${(import.meta.env.VITE_API_URL||"")}/api/storage/download?bucket=logos&ruta=${encodeURIComponent(up.ruta)}`;
     return crud.editar(id, { urlLogo: url } as Partial<Empresa>);
   },
 };

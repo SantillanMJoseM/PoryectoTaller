@@ -1,7 +1,7 @@
 // ============================================================================
 // Sistema Taller — Cliente HTTP para el backend propio (migración PostgreSQL)
 // ============================================================================
-const BASE = (import.meta.env.VITE_API_URL as string | undefined)?.trim() || "http://localhost:4000";
+const BASE = (import.meta.env.VITE_API_URL as string | undefined)?.trim() || "";
 
 export const API_URL = BASE;
 
