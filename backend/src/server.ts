@@ -139,5 +139,7 @@ async function bootstrap() {
 }
 
 bootstrap().then(() => {
-  app.listen(env.PORT, () => console.log(`Backend listening on ${env.PORT}`));
+  process.on("unhandledRejection", (e) => console.error("Unhandled rejection:", e));
+process.on("uncaughtException", (e) => console.error("Uncaught exception:", e));
+app.listen(env.PORT, () => console.log(`Backend listening on ${env.PORT}`));
 }).catch((e) => { console.error(e); process.exit(1); });

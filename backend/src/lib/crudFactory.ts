@@ -2,6 +2,7 @@ import type { Request, Response, Router } from "express";
 import { Router as createRouter } from "express";
 import { prisma } from "./prisma.js";
 import { HttpError } from "../middleware/error.js";
+import { asyncHandler } from "../lib/asyncHandler.js";
 
 export interface CrudConfig {
   model: string;          // prisma model name (camelCase)
@@ -27,8 +28,7 @@ export function buildCrudRouter(cfg: CrudConfig, authMw: any, permMw: (c: string
   const A = cfg.permisos.add ? permMw(cfg.permisos.add) : (_r:any,_s:any,n:any)=>n();
   const E = cfg.permisos.edit ? permMw(cfg.permisos.edit) : (_r:any,_s:any,n:any)=>n();
   const D = cfg.permisos.del ? permMw(cfg.permisos.del) : (_r:any,_s:any,n:any)=>n();
-  r.get("/", authMw, V, async (req: Request, res: Response) => {
-    try {
+  r.get("/", authMw, V, asyncHandler(async (req: Request, res: Response) => {
       const page = Math.max(1, Number(req.query.pagina ?? 1));
       const size = Math.min(Math.max(1, Number(req.query.tamPagina ?? 20)), 200);
       const skip = (page - 1) * size;
@@ -62,10 +62,9 @@ export function buildCrudRouter(cfg: CrudConfig, authMw: any, permMw: (c: string
         M().count({ where }),
       ]);
       res.json({ datos: data, total, pagina: page, tamPagina: size, paginas: Math.max(1, Math.ceil(total / size)) });
-    } catch (e) { throw e; }
-  });
+}));
 
-  r.get("/count", authMw, V, async (req: Request, res: Response) => {
+  r.get("/count", authMw, V, asyncHandler(async (req: Request, res: Response) => {
     const where: any = {};
     for (const [k, v] of Object.entries(req.query)) {
       if (v === undefined || v === null || v === "") continue;
@@ -73,30 +72,30 @@ export function buildCrudRouter(cfg: CrudConfig, authMw: any, permMw: (c: string
     }
     const c = await M().count({ where });
     res.json({ count: c });
-  });
+}));
 
-  r.get("/:id", authMw, V, async (req: Request, res: Response) => {
+  r.get("/:id", authMw, V, asyncHandler(async (req: Request, res: Response) => {
     const item = await M().findUnique({ where: { [cfg.pk]: req.params.id } });
     if (!item) throw new HttpError(404, "No encontrado.");
     res.json(item);
-  });
+}));
 
-  r.post("/", authMw, A, async (req: Request, res: Response) => {
+  r.post("/", authMw, A, asyncHandler(async (req: Request, res: Response) => {
     const item = await M().create({ data: req.body });
     res.status(201).json(item);
-  });
+}));
 
-  r.put("/:id", authMw, E, async (req: Request, res: Response) => {
+  r.put("/:id", authMw, E, asyncHandler(async (req: Request, res: Response) => {
     if (cfg.guardUpdate) await cfg.guardUpdate(req.params.id as string, req.body);
     const item = await M().update({ where: { [cfg.pk]: req.params.id }, data: req.body });
     res.json(item);
-  });
+}));
 
-  r.delete("/:id", authMw, D, async (req: Request, res: Response) => {
+  r.delete("/:id", authMw, D, asyncHandler(async (req: Request, res: Response) => {
     if (cfg.guardDelete) await cfg.guardDelete(req.params.id as string);
     await M().delete({ where: { [cfg.pk]: req.params.id } });
     res.status(204).send();
-  });
+}));
 
   return r;
 }
