@@ -1,35 +1,27 @@
 # Sistema Taller
 
-Aplicación web de gestión para talleres y servicios técnicos.
+Sistema de gestión para talleres: clientes, productos, servicios, órdenes de trabajo, ventas, facturación, financiero, documentos, garantías, reportes.
 
-Stack: React + TypeScript + Tailwind CSS + shadcn/ui + Supabase.
-
-## Scripts
-
-- `npm install`
-- `npm run dev`
-- `npm run build`
-- `npm test`
-
-## Despliegue local
-
-Ver `docs/deployment/LOCAL_DEPLOYMENT.md`.
-
-Resumen:
+## Instalación (Debian 13)
 
 ```bash
-cp .env.example .env.local
-# completar VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY
-./deploy.sh
-./scripts/start.sh
+git clone -b migration/postgres-puro https://github.com/SantillanMJoseM/PoryectoTaller.git
+cd PoryectoTaller
+sudo bash scripts/install-postgresql.sh
 ```
 
-Acceso: `http://192.168.1.43` (o la IP del servidor).
+El instalador se encarga de todo: dependencias, Docker, PostgreSQL, backend, frontend, migraciones y administrador inicial.
 
-## Estructura
+Al finalizar mostrará la URL y las credenciales del administrador inicial (admin@taller.com). El sistema exigirá cambio de contraseña en el primer ingreso.
 
-- `src/` frontend
-- `supabase/migrations/` esquema, RLS y migraciones (0001–0007)
-- `supabase/functions/` Edge Functions (`portal-login`)
-- `docs/` documentación por módulo
-- `scripts/` instalación, inicio, parada y diagnóstico
+## Scripts de operación
+- `scripts/update-postgresql.sh` — actualizar preservando datos
+- `scripts/backup-postgresql.sh` — backup completo
+- `scripts/restore-postgresql.sh` — restauración con confirmación
+- `scripts/status-postgresql.sh` — estado de servicios
+- `scripts/uninstall-postgresql.sh` — desinstalación (datos preservados por defecto)
+
+## Requisitos mínimos
+- Debian 13 (o compatible)
+- 1 GB RAM, 5 GB disco libre
+- Conexión a Internet (primera instalación)
