@@ -16,6 +16,21 @@ import storageRoutes from "./routes/storage.js";
 const ALL_PERMS = ["vCliente","aCliente","eCliente","dCliente","vProducto","aProducto","eProducto","dProducto","vServicio","aServicio","eServicio","dServicio","vOrden","aOrden","eOrden","dOrden","vVenta","aVenta","eVenta","dVenta","vMovimiento","aMovimiento","eMovimiento","dMovimiento","vArchivo","aArchivo","eArchivo","dArchivo","vUsuario","aUsuario","eUsuario","dUsuario","vPermiso","aPermiso","ePermiso","dPermiso","vAuditoria","dAuditoria","vEmail","dEmail","cEmpresa","eEmpresa","vGarantia","aGarantia","eGarantia","dGarantia"];
 
 
+
+function serializeDecimals(obj: any): any {
+  if (Array.isArray(obj)) return obj.map(serializeDecimals);
+  if (obj && typeof obj === "object" && !(obj instanceof Date)) {
+    // Prisma Decimal detection
+    if (typeof obj.toNumber === "function" && obj.d && Array.isArray(obj.d)) {
+      return obj.toNumber();
+    }
+    const out: any = {};
+    for (const k of Object.keys(obj)) out[k] = serializeDecimals(obj[k]);
+    return out;
+  }
+  return obj;
+}
+
 function snakeToCamel(s: string) { return s.replace(/_([a-z])/g, (_, c) => c.toUpperCase()); }
 function camelToSnake(s: string) { return s.replace(/[A-Z]/g, (m) => "_" + m.toLowerCase()); }
 function convertKeys(obj: any, fn: (k: string) => string): any {
@@ -33,7 +48,7 @@ app.use(helmet());
 
 app.use((req, res, next) => {
   const orig = res.json.bind(res);
-  res.json = (data: any) => orig(convertKeys(data, camelToSnake));
+  res.json = (data: any) => orig(convertKeys(serializeDecimals(data), camelToSnake));
   next();
 });
 
