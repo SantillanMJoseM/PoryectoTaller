@@ -32,8 +32,8 @@ export const usuariosService = {
   async obtener(id: string): Promise<Usuario | null> {
     const u = await api.get(`/api/usuarios/${id}`).catch(()=>null);
     if (!u) return null;
-    if (u.permisoId) {
-      try { u.permisos = await api.get(`/api/permisos/${u.permisoId}`); } catch {}
+    if (u.permiso_id) {
+      try { u.permisos = await api.get(`/api/permisos/${u.permiso_id}`); } catch {}
     }
     return u as Usuario;
   },

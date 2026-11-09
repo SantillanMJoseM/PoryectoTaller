@@ -31,11 +31,11 @@ export const autenticacionService = {
     } catch {}
     // attach permisos group
     let grupo: any = null;
-    if (perfil?.permisoId) {
-      try { grupo = await api.get(`/api/permisos/${perfil.permisoId}`); } catch {}
+    if (perfil?.permiso_id) {
+      try { grupo = await api.get(`/api/permisos/${perfil.permiso_id}`); } catch {}
     }
     const permisos = data.user?.permisos ?? grupo?.permisos ?? [];
-    if (perfil && !perfil.estadoUsuario) {
+    if (perfil && !perfil.estado_usuario) {
       clearTokens();
       throw new Error("Usuario inexistente o inactivo.");
     }
@@ -71,7 +71,7 @@ export const autenticacionService = {
       let grupo = user?.permiso ?? null;
       const permisos = me.permisos ?? (Array.isArray(grupo?.permisos) ? grupo.permisos : []);
       return {
-        idSupabase: user.idUsuario ?? user.id,
+        idSupabase: user.id_usuario ?? user.id,
         correo: user.correo,
         usuario: user ? ({ ...user, permisos: grupo } as any) : null,
         permisos,
