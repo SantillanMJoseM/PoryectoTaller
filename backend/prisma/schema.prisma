@@ -99,6 +99,9 @@ model Equipo {
   idEquipo          String   @id @default(uuid()) @map("id_equipo") @db.Uuid
   equipo            String
   numeroSerie       String?  @map("numero_serie")
+  numeroChasis      String?  @map("numero_chasis")
+  numeroMotor       String?  @map("numero_motor")
+  condicion         String?
   modelo            String?
   color             String?
   descripcion       String?
