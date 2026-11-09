@@ -6,7 +6,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { catalogosService, clientesService } from "../services";
-import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import { formatoFecha } from "../lib/fechas";
 import type { Cliente, Equipo } from "../lib/types";
 
@@ -20,15 +20,8 @@ function DetalleEquipo({ equipo, clientes, marcas }: { equipo: Equipo; clientes:
 
   useEffect(() => {
     setCargando(true);
-    Promise.resolve(supabase
-      .from("equipos_orden")
-      .select("*, ordenes_trabajo:orden_id(id_orden, fecha_inicial, estado, defecto, usuario_id, usuarios:usuario_id(nombre))")
-      .eq("equipo_id", equipo.id_equipo)
-      .order("id_equipo_orden", { ascending: false }))
-      .then(({ data, error }) => {
-        if (error) throw error;
-        setHistorial((data ?? []) as any[]);
-      })
+    api.get(`/api/equipos-orden?equipoId=${equipo.id_equipo}&tamPagina=200`)
+      .then((r: any) => setHistorial((r?.datos ?? []) as any[]))
       .catch(() => setHistorial([]))
       .finally(() => setCargando(false));
   }, [equipo.id_equipo]);

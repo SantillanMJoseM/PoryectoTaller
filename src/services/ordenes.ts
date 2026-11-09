@@ -13,10 +13,10 @@
 // ============================================================================
 
 import { crearCrud, llamarRpc } from "../lib/crud";
+import { api } from "../lib/api";
 import { mensajeError } from "../lib/errores";
 import { hoyISO } from "../lib/fechas";
 import { generarUuid } from "../lib/uuid";
-import { supabase } from "../lib/supabase";
 import { subtotalLinea, redondear } from "../lib/dinero";
 import { validarOrden } from "../lib/validaciones";
 import type {
@@ -45,51 +45,41 @@ export const ordenesService = {
     pagina?: number;
     tamPagina?: number;
   }) {
-    const pagina = Math.max(1, opciones.pagina ?? 1);
-    const tamPagina = Math.min(Math.max(1, opciones.tamPagina ?? 20), 200);
-    let consulta = supabase
-      .from("ordenes_trabajo")
-      .select("*", { count: "exact" })
-      .range((pagina - 1) * tamPagina, pagina * tamPagina - 1)
-      .order("fecha_inicial", { ascending: false });
-    if (opciones.estado) consulta = consulta.eq("estado", opciones.estado);
-    if (opciones.clienteId) consulta = consulta.eq("cliente_id", opciones.clienteId);
-    if (opciones.fechaInicial) consulta = consulta.gte("fecha_inicial", opciones.fechaInicial);
-    if (opciones.fechaFinal) consulta = consulta.lte("fecha_inicial", opciones.fechaFinal);
-    const { data, error, count } = await consulta;
-    if (error) throw new Error(mensajeError(error));
-    const total = count ?? 0;
-    return {
-      datos: (data ?? []) as OrdenTrabajo[],
-      total,
-      pagina,
-      tamPagina,
-      paginas: Math.max(1, Math.ceil(total / tamPagina)),
-    };
+    const filtros: Record<string, unknown> = {};
+    if (opciones.estado) filtros.estado = opciones.estado;
+    if (opciones.clienteId) filtros.clienteId = opciones.clienteId;
+    const r = await crud.listar({ pagina: opciones.pagina, tamPagina: opciones.tamPagina, filtros, columna: "fechaInicial", ascendente: false });
+    let datos = r.datos;
+    if (opciones.fechaInicial) datos = datos.filter((o: any) => String(o.fechaInicial ?? o.fecha_inicial) >= String(opciones.fechaInicial));
+    if (opciones.fechaFinal) datos = datos.filter((o: any) => String(o.fechaInicial ?? o.fecha_inicial) <= String(opciones.fechaFinal));
+    return { ...r, datos };
   },
 
   /** Detalle completo con cliente, usuario/técnico y garantía asociada. */
   async obtenerConDetalles(id: string): Promise<OrdenTrabajo | null> {
-    const { data, error } = await supabase
-      .from("ordenes_trabajo")
-      .select(SELECT_DETALLE)
-      .eq("id_orden", id)
-      .maybeSingle();
-    if (error) throw new Error(mensajeError(error));
-    return (data ?? null) as OrdenTrabajo | null;
+    const o = await crud.obtener(id);
+    if (!o) return null;
+    if ((o as any).clienteId) {
+      try { (o as any).clientes = await api.get(`/api/clientes/${(o as any).clienteId}`); } catch {}
+    }
+    if ((o as any).usuarioId) {
+      try { (o as any).usuarios = await api.get(`/api/usuarios/${(o as any).usuarioId}`); } catch {}
+    }
+    if ((o as any).garantiaId) {
+      try { (o as any).garantias = await api.get(`/api/garantias/${(o as any).garantiaId}`); } catch {}
+    }
+    return o as OrdenTrabajo;
   },
 
   /** Líneas de producto y servicio de la orden. */
   async obtenerLineas(id: string): Promise<{ productos: ProductoOrden[]; servicios: ServicioOrden[] }> {
     const [prod, serv] = await Promise.all([
-      supabase.from("productos_orden").select("*").eq("orden_id", id).order("id_producto_orden"),
-      supabase.from("servicios_orden").select("*").eq("orden_id", id).order("id_servicio_orden"),
+      api.get(`/api/productos-orden?ordenId=${id}&tamPagina=200`).catch(() => ({ datos: [] })),
+      api.get(`/api/servicios-orden?ordenId=${id}&tamPagina=200`).catch(() => ({ datos: [] })),
     ]);
-    if (prod.error) throw new Error(mensajeError(prod.error));
-    if (serv.error) throw new Error(mensajeError(serv.error));
     return {
-      productos: (prod.data ?? []) as ProductoOrden[],
-      servicios: (serv.data ?? []) as ServicioOrden[],
+      productos: (prod?.datos ?? []) as ProductoOrden[],
+      servicios: (serv?.datos ?? []) as ServicioOrden[],
     };
   },
 
@@ -175,42 +165,22 @@ export const ordenesService = {
   ): Promise<ServicioOrden> {
     if (!(cantidad > 0)) throw new Error("La cantidad debe ser mayor que cero.");
     const p = precio ?? Number((servicio as { precio: number }).precio ?? 0);
-    const { data, error } = await supabase
-      .from("servicios_orden")
-      .insert({
-        orden_id: idOrden,
-        servicio_id: servicio.id_servicio,
-        servicio: (servicio as { nombre?: string }).nombre ?? "Servicio",
-        cantidad,
-        precio: p,
-        subtotal: subtotalLinea(cantidad, p),
-      })
-      .select("*")
-      .single();
-    if (error) throw new Error(mensajeError(error));
-    return data as ServicioOrden;
+    const id = await llamarRpc<string>("orden_agregar_servicio", {
+      p_orden: idOrden,
+      p_servicio: (servicio as { id_servicio: string }).id_servicio,
+      p_cantidad: cantidad,
+      p_precio: p,
+    });
+    return { id_servicio_orden: id } as ServicioOrden;
   },
 
   async cambiarCantidadServicio(idLinea: string, cantidad: number): Promise<void> {
-    const { data, error } = await supabase
-      .from("servicios_orden")
-      .select("precio")
-      .eq("id_servicio_orden", idLinea)
-      .single();
-    if (error) throw new Error(mensajeError(error));
-    await supabase
-      .from("servicios_orden")
-      .update({ cantidad, subtotal: subtotalLinea(cantidad, Number(data?.precio ?? 0)) })
-      .eq("id_servicio_orden", idLinea);
+    await llamarRpc("orden_cambiar_cantidad_servicio", { p_linea: idLinea, p_cantidad: cantidad });
   },
 
   /** Quita el servicio de la orden (recálculo de total en trigger de BD). */
   async quitarServicio(idLinea: string): Promise<void> {
-    const { error } = await supabase
-      .from("servicios_orden")
-      .delete()
-      .eq("id_servicio_orden", idLinea);
-    if (error) throw new Error(mensajeError(error));
+    await llamarRpc("orden_quitar_servicio", { p_linea: idLinea });
   },
 
   /** Total esperado de la orden (coincide con el trigger de BD). */
@@ -247,39 +217,25 @@ export const ordenesService = {
 
   /** Lista los anexos de la orden. */
   async listarAnexos(idOrden: string): Promise<Anexo[]> {
-    const { data, error } = await supabase
-      .from("anexos")
-      .select("*")
-      .eq("orden_id", idOrden)
-      .order("id_anexo");
-    if (error) throw new Error(mensajeError(error));
-    return (data ?? []) as Anexo[];
+    const r = await api.get(`/api/anexos?ordenId=${idOrden}&tamPagina=200`);
+    return (r?.datos ?? []) as Anexo[];
   },
 
   /** Sube archivo a Storage (bucket anexos-orden) y registra el anexo. */
   async adjuntarAnexo(idOrden: string, archivo: File): Promise<Anexo> {
+    const { subirAlBucket } = await import("../lib/supabase");
     const sanitizado = archivo.name.replace(/[^\w.\-]/g, "_");
     const ruta = `${idOrden}/${generarUuid()}-${sanitizado}`;
-    const { error: errUpload } = await supabase.storage
-      .from("anexos-orden")
-      .upload(ruta, archivo, { upsert: false });
-    if (errUpload) throw new Error(mensajeError(errUpload));
-    const { data: pub } = await supabase.storage.from("anexos-orden").createSignedUrl(ruta, 3600);
-    const url = (pub as { signedUrl?: string } | null)?.signedUrl ?? null;
-    const { data, error } = await supabase
-      .from("anexos")
-      .insert({ orden_id: idOrden, anexo: archivo.name, ruta, url })
-      .select("*")
-      .single();
-    if (error) throw new Error(mensajeError(error));
-    return data as Anexo;
+    await subirAlBucket("anexos-orden" as any, archivo, ruta);
+    const url = `${ (await import("../lib/api")).API_URL }/api/storage/download?bucket=anexos-orden&ruta=${encodeURIComponent(ruta)}`;
+    return await api.post("/api/anexos", { anexo: archivo.name, ruta, url, ordenId: idOrden }) as Anexo;
   },
 
   /** Elimina archivo de Storage y fila de anexo. */
   async quitarAnexo(idAnexo: string, ruta: string): Promise<void> {
-    await supabase.storage.from("anexos-orden").remove([ruta]);
-    const { error } = await supabase.from("anexos").delete().eq("id_anexo", idAnexo);
-    if (error) throw new Error(mensajeError(error));
+    const { eliminarDelBucket } = await import("../lib/supabase");
+    await eliminarDelBucket(ruta, "anexos-orden" as any);
+    await api.del(`/api/anexos/${idAnexo}`);
   },
 
   // ----------------------------- Envío por correo --------------------------
@@ -298,13 +254,12 @@ export const ordenesService = {
         `Taller — Orden ${idOrden.slice(0, 8).toUpperCase()}`,
         `Estado: ${orden.estado} · Total: ${orden.valor_total.toFixed(2)}`,
       ].join("\n");
-    const { error } = await supabase.from("cola_emails").insert({
+    await api.post("/api/emails", {
       para,
       mensaje: resumen,
       estado: "pendiente",
       encabezados: `orden:${idOrden}`,
     });
-    if (error) throw new Error(mensajeError(error));
   },
 };
 

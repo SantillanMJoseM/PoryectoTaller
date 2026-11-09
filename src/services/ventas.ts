@@ -10,9 +10,9 @@
 // ============================================================================
 
 import { crearCrud, llamarRpc } from "../lib/crud";
+import { api } from "../lib/api";
 import { mensajeError } from "../lib/errores";
 import { hoyISO } from "../lib/fechas";
-import { supabase } from "../lib/supabase";
 import { validarVenta, asegurarValido } from "../lib/validaciones";
 import type { ItemVenta, Venta } from "../lib/types";
 
@@ -32,40 +32,29 @@ export const ventasService = {
     pagina?: number;
     tamPagina?: number;
   }) {
-    const pagina = Math.max(1, opciones.pagina ?? 1);
-    const tamPagina = Math.min(Math.max(1, opciones.tamPagina ?? 20), 200);
-    let consulta = supabase
-      .from("ventas")
-      .select(`*, clientes:cliente_id(nombre_cliente, documento)`, { count: "exact" })
-      .range((pagina - 1) * tamPagina, pagina * tamPagina - 1)
-      .order("fecha_venta", { ascending: false });
-    if (opciones.q?.trim())
-      consulta = consulta.ilike("clientes.nombre_cliente", `%${opciones.q.trim()}%`);
-    if (opciones.clienteId) consulta = consulta.eq("cliente_id", opciones.clienteId);
-    if (opciones.fechaInicial) consulta = consulta.gte("fecha_venta", opciones.fechaInicial);
-    if (opciones.fechaFinal) consulta = consulta.lte("fecha_venta", opciones.fechaFinal);
-    const { data, error, count } = await consulta;
-    if (error) throw new Error(mensajeError(error));
-    const total = count ?? 0;
-    return {
-      datos: (data ?? []) as Venta[],
-      total,
-      pagina,
-      tamPagina,
-      paginas: Math.max(1, Math.ceil(total / tamPagina)),
-    };
+    const filtros: Record<string, unknown> = {};
+    if (opciones.clienteId) filtros.clienteId = opciones.clienteId;
+    if (opciones.fechaInicial) filtros.fechaVenta = undefined;
+    const r = await crud.listar({ pagina: opciones.pagina, tamPagina: opciones.tamPagina, filtros, columna: "fechaVenta", ascendente: false });
+    let datos = r.datos;
+    if (opciones.fechaInicial) datos = datos.filter((v: any) => String(v.fechaVenta ?? v.fecha_venta) >= String(opciones.fechaInicial));
+    if (opciones.fechaFinal) datos = datos.filter((v: any) => String(v.fechaVenta ?? v.fecha_venta) <= String(opciones.fechaFinal));
+    return { ...r, datos };
   },
 
   contar: crud.contar,
 
   async obtenerConDetalles(id: string): Promise<Venta | null> {
-    const { data, error } = await supabase
-      .from("ventas")
-      .select(SELECT_DETALLE)
-      .eq("id_venta", id)
-      .maybeSingle();
-    if (error) throw new Error(mensajeError(error));
-    return (data ?? null) as Venta | null;
+    const v = await crud.obtener(id);
+    if (!v) return null;
+    // attach items
+    const items = await api.get(`/api/items-venta?ventaId=${id}&tamPagina=200`).catch(() => ({ datos: [] }));
+    (v as any).items_venta = items?.datos ?? [];
+    // attach cliente
+    if ((v as any).clienteId) {
+      try { (v as any).clientes = await api.get(`/api/clientes/${(v as any).clienteId}`); } catch {}
+    }
+    return v as Venta;
   },
 
   async crear(datos: Partial<Venta>): Promise<Venta> {
@@ -130,8 +119,8 @@ export const ventasService = {
 
   /** Cambia cantidad del ítem: devuelve la diferencia de stock. */
   async cambiarCantidadItem(idItem: string, cantidad: number): Promise<void> {
-    const { data } = await supabase.from("items_venta").select("venta_id").eq("id_item_venta", idItem).maybeSingle();
-    const idVenta = (data as { venta_id?: string } | null)?.venta_id;
+    let idVenta: string | undefined;
+    try { const it = await api.get(`/api/items-venta/${idItem}`); idVenta = it?.ventaId ?? it?.venta_id; } catch {}
     if (idVenta) {
       const v = await this.obtenerConDetalles(idVenta);
       if (v?.facturado) throw new Error("La venta ya está facturada y no admite cambios en cantidades.");
@@ -142,8 +131,8 @@ export const ventasService = {
 
   /** Quita el ítem y devuelve su stock. */
   async quitarItem(idItem: string): Promise<void> {
-    const { data } = await supabase.from("items_venta").select("venta_id").eq("id_item_venta", idItem).maybeSingle();
-    const idVenta = (data as { venta_id?: string } | null)?.venta_id;
+    let idVenta: string | undefined;
+    try { const it = await api.get(`/api/items-venta/${idItem}`); idVenta = it?.ventaId ?? it?.venta_id; } catch {}
     if (idVenta) {
       const v = await this.obtenerConDetalles(idVenta);
       if (v?.facturado) throw new Error("La venta ya está facturada y no admite eliminación de ítems.");

@@ -10,7 +10,7 @@
 
 import { crearCrud } from "../lib/crud";
 import { mensajeError } from "../lib/errores";
-import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import { validarCliente } from "../lib/validaciones";
 import type { Cliente } from "../lib/types";
 
@@ -51,15 +51,8 @@ export const clientesService = {
   /** Búsqueda rápida por el término libre (autocompletado). */
   async autocompletar(q: string, limite = 10): Promise<Cliente[]> {
     if (!q || q.trim().length < 1) return [];
-    const patron = `%${q.trim().replace(/[%_(),]/g, "")}%`;
-    const { data, error } = await supabase
-      .from("clientes")
-      .select("id_cliente, nombre_cliente, documento, correo")
-      .or(`nombre_cliente.ilike.${patron},documento.ilike.${patron},correo.ilike.${patron}`)
-      .order("nombre_cliente")
-      .limit(limite);
-    if (error) throw new Error(mensajeError(error));
-    return (data ?? []) as Cliente[];
+    const r = await api.get(`/api/clientes?q=${encodeURIComponent(q.trim())}&tamPagina=${limite}`).catch(()=>({datos:[]}));
+    return (r?.datos ?? []) as Cliente[];
   },
 
   /** Cantidades de órdenes, ventas, movimientos y equipos del cliente. */
@@ -69,14 +62,12 @@ export const clientesService = {
     movimientos: number;
     equipos: number;
   }> {
-    const { data, error } = await supabase
-      .from("v_cliente_vinculos")
-      .select("ordenes, ventas, movimientos, equipos")
-      .eq("id_cliente", idCliente)
-      .maybeSingle();
-    if (error) throw new Error(mensajeError(error));
-    return (
-      data ?? { ordenes: 0, ventas: 0, movimientos: 0, equipos: 0 }
-    );
+    const [o,v,m,e] = await Promise.all([
+      api.get(`/api/ordenes?clienteId=${idCliente}&tamPagina=1`).catch(()=>({total:0})),
+      api.get(`/api/ventas?clienteId=${idCliente}&tamPagina=1`).catch(()=>({total:0})),
+      api.get(`/api/movimientos?clienteId=${idCliente}&tamPagina=1`).catch(()=>({total:0})),
+      api.get(`/api/equipos?clienteId=${idCliente}&tamPagina=1`).catch(()=>({total:0})),
+    ]);
+    return { ordenes: o?.total ?? 0, ventas: v?.total ?? 0, movimientos: m?.total ?? 0, equipos: e?.total ?? 0 };
   },
 };

@@ -49,7 +49,6 @@ import {
 import SimpleSelect, { type OpcionSelect } from "../components/SimpleSelect";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { useAuth } from "../contexts/AuthContext";
-import { supabase } from "../lib/supabase";
 import {
   catalogosService,
   clientesService,

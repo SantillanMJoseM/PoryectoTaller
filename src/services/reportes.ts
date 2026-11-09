@@ -10,7 +10,7 @@
 // ============================================================================
 
 import { mensajeError } from "../lib/errores";
-import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import { rangoPeriodo, type Periodo } from "../lib/fechas";
 import { empresaService, logoComoDataUrl } from "./empresa";
 import type { Cliente, Categoria, Garantia, MovimientoFinanciero, OrdenTrabajo, Producto, Servicio, Venta } from "../lib/types";
@@ -108,11 +108,10 @@ export const reportesService = {
 
     switch (tipo) {
       case "clientes": {
-        let q = supabase.from("clientes").select("*").order("nombre_cliente");
-        if (rango.fechaInicial) q = q.gte("fecha_registro", rango.fechaInicial);
-        if (rango.fechaFinal) q = q.lte("fecha_registro", rango.fechaFinal);
-        const { data, error } = await q;
-        if (error) throw new Error(mensajeError(error));
+        const r = await api.get("/api/clientes?tamPagina=500").catch(()=>({datos:[]}));
+        let data = r?.datos ?? [];
+        if (rango.fechaInicial) data = data.filter((c:any)=> String(c.fecha_registro) >= String(rango.fechaInicial));
+        if (rango.fechaFinal) data = data.filter((c:any)=> String(c.fecha_registro) <= String(rango.fechaFinal));
         return this._armar("clientes", TITULOS.clientes, cabecera, [
           { clave: "nombre_cliente", titulo: "Nombre" },
           { clave: "documento", titulo: "Documento" },
@@ -126,10 +125,8 @@ export const reportesService = {
         // Para «solo stock bajo» se usa la vista v_stock_alerta (comparación
         // stock < stock_minimo en la base de datos, RF-016).
         if (filtros.soloStockBajo) {
-          const { data: alertas, error: errAlerta } = await supabase
-            .from("v_stock_alerta")
-            .select("id_producto, descripcion, unidad, stock, stock_minimo, faltante");
-          if (errAlerta) throw new Error(mensajeError(errAlerta));
+          const r = await api.get("/api/productos?tamPagina=500").catch(()=>({datos:[]}));
+          const alertas = (r?.datos ?? []).filter((p:any)=> Number(p.stock) < Number(p.stock_minimo)).map((p:any)=>({...p, faltante: Number(p.stock_minimo)-Number(p.stock)}));
           return this._armar("productos", `${TITULOS.productos} (stock bajo)`, cabecera, [
             { clave: "descripcion", titulo: "Descripción" },
             { clave: "unidad", titulo: "Unidad" },
@@ -138,12 +135,9 @@ export const reportesService = {
             { clave: "faltante", titulo: "Faltante", tipo: "numero" },
           ], (alertas ?? []) as unknown as Record<string, unknown>[]);
         }
-        const { data, error } = await supabase
-          .from("productos")
-          .select("*")
-          .order("descripcion");
-        if (error) throw new Error(mensajeError(error));
-        const filas = ((data ?? []) as Producto[])
+        const rr = await api.get("/api/productos?tamPagina=500").catch(()=>({datos:[]}));
+        const data = rr?.datos ?? [];
+        const filas = (data as Producto[])
           .filter((p) =>
             aplicaRangoNumerico(Number(p.precio_venta), filtros.precioInicial, filtros.precioFinal) &&
             aplicaRangoNumerico(Number(p.stock), filtros.stockInicial, filtros.stockFinal)) as unknown as Record<string, unknown>[];
@@ -157,10 +151,9 @@ export const reportesService = {
         ], filas);
       }
       case "servicios": {
-        const q = supabase.from("servicios").select("*").order("nombre");
-        const { data, error } = await q;
-        if (error) throw new Error(mensajeError(error));
-        const filas = ((data ?? []) as Servicio[])
+        const rr = await api.get("/api/servicios?tamPagina=500").catch(()=>({datos:[]}));
+        const data = rr?.datos ?? [];
+        const filas = (data as Servicio[])
           .filter((s) => aplicaRangoNumerico(Number(s.precio), filtros.precioInicial, filtros.precioFinal)) as unknown as Record<string, unknown>[];
         return this._armar("servicios", TITULOS.servicios, cabecera, [
           { clave: "nombre", titulo: "Nombre" },
@@ -169,15 +162,16 @@ export const reportesService = {
         ], filas);
       }
       case "ordenes": {
-        let q = supabase.from("ordenes_trabajo").select("*, clientes(nombre_cliente)").order("fecha_inicial", { ascending: false });
-        if (filtros.estado) q = q.eq("estado", filtros.estado);
-        if (filtros.clienteId) q = q.eq("cliente_id", filtros.clienteId);
-        if (rango.fechaInicial) q = q.gte("fecha_inicial", rango.fechaInicial);
-        if (rango.fechaFinal) q = q.lte("fecha_inicial", rango.fechaFinal);
-        if (filtros.soloFacturadas) q = q.eq("facturado", true);
-        const { data, error } = await q;
-        if (error) throw new Error(mensajeError(error));
-        const filas = ((data ?? []) as (OrdenTrabajo & { clientes?: { nombre_cliente?: string } | null })[])
+        const rr = await api.get("/api/ordenes?tamPagina=500").catch(()=>({datos:[]}));
+        let data = rr?.datos ?? [];
+        if (filtros.estado) data = data.filter((o:any)=>o.estado===filtros.estado);
+        if (filtros.clienteId) data = data.filter((o:any)=>o.cliente_id===filtros.clienteId || o.clienteId===filtros.clienteId);
+        if (rango.fechaInicial) data = data.filter((o:any)=>String(o.fecha_inicial ?? o.fechaInicial)>=String(rango.fechaInicial));
+        if (rango.fechaFinal) data = data.filter((o:any)=>String(o.fecha_inicial ?? o.fechaInicial)<=String(rango.fechaFinal));
+        if (filtros.soloFacturadas) data = data.filter((o:any)=>o.facturado);
+        // attach cliente names
+        for (const o of data) { if (o.cliente_id || o.clienteId) { try { const c = await api.get(`/api/clientes/${o.cliente_id ?? o.clienteId}`); o.clientes = { nombre_cliente: c?.nombre_cliente ?? c?.nombreCliente }; } catch {} } }
+        const filas = (data as any[])
           .filter((o) => aplicaRangoNumerico(Number(o.valor_total), filtros.precioInicial, filtros.precioFinal))
           .map((o) => ({
             id_orden: o.id_orden,
@@ -196,14 +190,14 @@ export const reportesService = {
         ], filas);
       }
       case "ventas": {
-        let q = supabase.from("ventas").select("*, clientes(nombre_cliente)").order("fecha_venta", { ascending: false });
-        if (filtros.clienteId) q = q.eq("cliente_id", filtros.clienteId);
-        if (rango.fechaInicial) q = q.gte("fecha_venta", rango.fechaInicial);
-        if (rango.fechaFinal) q = q.lte("fecha_venta", rango.fechaFinal);
-        if (filtros.soloFacturadas) q = q.eq("facturado", true);
-        const { data, error } = await q;
-        if (error) throw new Error(mensajeError(error));
-        const filas = ((data ?? []) as (Venta & { clientes?: { nombre_cliente?: string } | null })[])
+        const rr = await api.get("/api/ventas?tamPagina=500").catch(()=>({datos:[]}));
+        let data = rr?.datos ?? [];
+        if (filtros.clienteId) data = data.filter((v:any)=> (v.cliente_id ?? v.clienteId)===filtros.clienteId);
+        if (rango.fechaInicial) data = data.filter((v:any)=> String(v.fecha_venta ?? v.fechaVenta) >= String(rango.fechaInicial));
+        if (rango.fechaFinal) data = data.filter((v:any)=> String(v.fecha_venta ?? v.fechaVenta) <= String(rango.fechaFinal));
+        if (filtros.soloFacturadas) data = data.filter((v:any)=>v.facturado);
+        for (const v of data) { if (v.cliente_id ?? v.clienteId) { try { const c = await api.get(`/api/clientes/${v.cliente_id ?? v.clienteId}`); v.clientes = { nombre_cliente: c?.nombre_cliente ?? c?.nombreCliente }; } catch {} } }
+        const filas = (data as any[])
           .filter((v) => aplicaRangoNumerico(Number(v.valor_total), filtros.precioInicial, filtros.precioFinal))
           .map((v) => ({
             fecha_venta: v.fecha_venta,
@@ -223,15 +217,13 @@ export const reportesService = {
       case "financiero": {
         const periodo: Periodo = "todos";
         const r = rangoPeriodo(periodo);
-        let q = supabase
-          .from("movimientos_financieros")
-          .select("*")
-          .order("fecha_vencimiento");
-        if (filtros.fechaInicial ?? r.fechaInicial) q = q.gte("fecha_vencimiento", filtros.fechaInicial ?? r.fechaInicial!);
-        if (filtros.fechaFinal ?? r.fechaFinal) q = q.lte("fecha_vencimiento", filtros.fechaFinal ?? r.fechaFinal!);
-        if (filtros.estado === "ingreso" || filtros.estado === "egreso") q = q.eq("tipo", filtros.estado);
-        const { data, error } = await q;
-        if (error) throw new Error(mensajeError(error));
+        const rr = await api.get("/api/movimientos?tamPagina=500").catch(()=>({datos:[]}));
+        let data = rr?.datos ?? [];
+        const fi = filtros.fechaInicial ?? r.fechaInicial;
+        const ff = filtros.fechaFinal ?? r.fechaFinal;
+        if (fi) data = data.filter((m:any)=> String(m.fecha_vencimiento ?? m.fechaVencimiento) >= String(fi));
+        if (ff) data = data.filter((m:any)=> String(m.fecha_vencimiento ?? m.fechaVencimiento) <= String(ff));
+        if (filtros.estado === "ingreso" || filtros.estado === "egreso") data = data.filter((m:any)=>m.tipo===filtros.estado);
         const filas = ((data ?? []) as unknown as (MovimientoFinanciero & { categorias?: Pick<Categoria, "categoria"> | null })[])
           .filter((m) => aplicaRangoNumerico(Number(m.valor), filtros.precioInicial, filtros.precioFinal))
           .map((m) => ({
@@ -268,12 +260,6 @@ export const reportesService = {
 
   /** Garantías asociadas para imprimir junto a la orden (garantia_id). */
   async garantiaDeOrden(idGarantia: string): Promise<Garantia | null> {
-    const { data, error } = await supabase
-      .from("garantias")
-      .select("*")
-      .eq("id_garantia", idGarantia)
-      .maybeSingle();
-    if (error) throw new Error(mensajeError(error));
-    return (data ?? null) as Garantia | null;
+    try { return await api.get(`/api/garantias/${idGarantia}`); } catch { return null; }
   },
 };

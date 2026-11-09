@@ -11,7 +11,7 @@ import { crearCrud } from "../lib/crud";
 import { mensajeError } from "../lib/errores";
 import { formatoFecha } from "../lib/fechas";
 import { generarUuid } from "../lib/uuid";
-import { supabase } from "../lib/supabase";
+import { subirAlBucket, firmarUrlBucket, eliminarDelBucket } from "../lib/supabase";
 import type { Documento } from "../lib/types";
 
 const LIMITE_BYTES = 20 * 1024 * 1024;
@@ -55,17 +55,14 @@ export const archivosService = {
     if (archivo.size > LIMITE_BYTES) throw new Error("El archivo supera el límite de 20 MB.");
     const sanitizado = archivo.name.replace(/[^\w.\-]/g, "_");
     const ruta = `${generarUuid()}-${sanitizado}`;
-    const { error: errUpload } = await supabase.storage
-      .from("documentos")
-      .upload(ruta, archivo, { upsert: false });
-    if (errUpload) throw new Error(mensajeError(errUpload));
-    const { data: firma } = await supabase.storage.from("documentos").createSignedUrl(ruta, 3600);
+    await subirAlBucket("documentos", archivo, ruta);
+    const url = await firmarUrlBucket(ruta, "documentos", 3600);
     return crud.crear({
       ...metadatos,
       documento: metadatos.documento ?? archivo.name,
       archivo: archivo.name,
       ruta,
-      url: firma?.signedUrl ?? null,
+      url,
       tipo: archivo.type ?? "application/octet-stream",
       tamanio: archivo.size,
     });
@@ -75,18 +72,13 @@ export const archivosService = {
   async descargar(idDocumento: string): Promise<string> {
     const doc = await crud.obtener(idDocumento);
     if (!doc?.ruta) throw new Error("Documento sin archivo físico.");
-    const { data, error } = await supabase
-      .storage
-      .from("documentos")
-      .createSignedUrl(doc.ruta, 3600);
-    if (error || !data) throw new Error(mensajeError(error ?? new Error("No se pudo firmar la URL.")));
-    return data.signedUrl;
+    return firmarUrlBucket(doc.ruta, "documentos", 3600);
   },
 
   /** Elimina el archivo físico y la fila de metadatos. */
   async eliminarConArchivo(idDocumento: string): Promise<void> {
     const doc = await crud.obtener(idDocumento);
-    if (doc?.ruta) await supabase.storage.from("documentos").remove([doc.ruta]);
+    if (doc?.ruta) await eliminarDelBucket(doc.ruta, "documentos");
     await crud.eliminar(idDocumento);
   },
 };

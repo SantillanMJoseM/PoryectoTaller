@@ -10,7 +10,7 @@
 
 import { crearCrud, llamarRpc } from "../lib/crud";
 import { mensajeError } from "../lib/errores";
-import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import { validarProducto } from "../lib/validaciones";
 import type { Producto } from "../lib/types";
 
@@ -46,39 +46,22 @@ export const productosService = {
   async alertaStock(): Promise<
     { id_producto: string; descripcion: string; stock: number; stock_minimo: number; faltante: number }[]
   > {
-    const { data, error } = await supabase
-      .from("v_stock_alerta")
-      .select("id_producto, descripcion, stock, stock_minimo, faltante")
-      .order("faltante", { ascending: false });
-    if (error) throw new Error(mensajeError(error));
-    return data ?? [];
+    const r = await api.get("/api/productos?tamPagina=500").catch(()=>({datos:[]}));
+    const data = (r?.datos ?? []).filter((p:any)=> Number(p.stock) < Number(p.stock_minimo)).map((p:any)=>({...p, faltante: Number(p.stock_minimo)-Number(p.stock)}));
+    return data;
   },
 
   /** Habilitado para vender/usar en órdenes (salida=true). */
   async habilitadosSalida(q?: string, limite = 20): Promise<Producto[]> {
-    let consulta = supabase
-      .from("productos")
-      .select("id_producto, descripcion, precio_venta, stock, unidad")
-      .eq("salida", true)
-      .order("descripcion")
-      .limit(limite);
-    if (q && q.trim()) consulta = consulta.ilike("descripcion", `%${q.trim()}%`);
-    const { data, error } = await consulta;
-    if (error) throw new Error(mensajeError(error));
-    return (data ?? []) as Producto[];
+    const r = await api.get(`/api/productos?salida=true&tamPagina=${limite}${q?`&q=${encodeURIComponent(q.trim())}`:""}`).catch(()=>({datos:[]}));
+    return (r?.datos ?? []) as Producto[];
   },
 
   /** Autocompletado de productos (aparece en órdenes y ventas). */
   async autocompletar(q: string, limite = 10): Promise<Producto[]> {
     if (!q?.trim()) return [];
-    const { data, error } = await supabase
-      .from("productos")
-      .select("id_producto, descripcion, precio_venta, precio_compra, stock, unidad")
-      .ilike("descripcion", `%${q.trim()}%`)
-      .order("descripcion")
-      .limit(limite);
-    if (error) throw new Error(mensajeError(error));
-    return (data ?? []) as Producto[];
+    const r = await api.get(`/api/productos?q=${encodeURIComponent(q.trim())}&tamPagina=${limite}`).catch(()=>({datos:[]}));
+    return (r?.datos ?? []) as Producto[];
   },
 
   /** Ajuste de inventario autorizado (única vía sin orden/venta). */

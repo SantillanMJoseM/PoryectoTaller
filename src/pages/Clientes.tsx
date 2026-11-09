@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import CrudPage, { type Fila } from "../components/CrudPage";
 import { useAuth } from "../contexts/AuthContext";
 import { clientesService, catalogosService, ordenesService, ventasService } from "../services";
-import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import { formatoFecha } from "../lib/fechas";
 import { formatoDinero } from "../lib/dinero";
 import type { Cliente, Equipo, OrdenTrabajo, Venta } from "../lib/types";
@@ -64,7 +64,7 @@ function PanelCliente({ cliente }: { cliente: Cliente }) {
       catalogosService.equipos.listar(cliente.id_cliente).catch(() => ({ datos: [] })),
       ordenesService.listarFiltradas({ clienteId: cliente.id_cliente, tamPagina: 100 }).catch(() => ({ datos: [] })),
       ventasService.listarFiltradas({ clienteId: cliente.id_cliente, tamPagina: 100 }).catch(() => ({ datos: [] })),
-      Promise.resolve(supabase.from("movimientos_financieros").select("*").eq("cliente_id", cliente.id_cliente)).then((r) => r.data ?? []).catch(() => []),
+      api.get(`/api/movimientos?clienteId=${cliente.id_cliente}&tamPagina=200`).then((r:any) => r?.datos ?? []).catch(() => []),
     ]).then(([eq, or, ve, mv]) => {
       if (!montado) return;
       setEquipos(((eq as any)?.datos ?? []) as Equipo[]);

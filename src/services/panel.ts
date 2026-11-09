@@ -7,7 +7,7 @@
 // ============================================================================
 
 import { mensajeError } from "../lib/errores";
-import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import { productosService } from "./productos";
 import { financieroService } from "./financiero";
 import type { OrdenTrabajo, Producto, Venta, MovimientoFinanciero } from "../lib/types";
@@ -40,42 +40,27 @@ export const panelService = {
     const [ordenesAbiertas, alertas, ventas, movimientos, ordenesRecientes] = await Promise.all([
       // Abiertas = Abierta, En Proceso o Aguardando Piezas (no presupuesto,
       // no canceladas, no finalizadas).
-      supabase
-        .from("ordenes_trabajo")
-        .select("id_orden", { count: "exact", head: true })
-        .in("estado", ["Abierta", "En Proceso", "Aguardando Piezas"]),
+      api.get("/api/ordenes?tamPagina=500").catch(()=>({datos:[]})), 
       productosService.alertaStock(),
-      supabase
-        .from("ventas")
-        .select("*, clientes:cliente_id(nombre_cliente)")
-        .order("fecha_venta", { ascending: false })
-        .limit(5),
+      api.get("/api/ventas?tamPagina=5").catch(()=>({datos:[]})),
       financieroService.listarFiltradas({ periodo: "todos", situacionFiltro: "pendiente", tamPagina: 10 }),
-      supabase
-        .from("ordenes_trabajo")
-        .select("*")
-        .order("fecha_inicial", { ascending: false })
-        .limit(5),
+      api.get("/api/ordenes?tamPagina=5").catch(()=>({datos:[]})), 
     ]);
 
-    if (ordenesAbiertas.error) throw new Error(mensajeError(ordenesAbiertas.error));
-    if (ventas.error) throw new Error(mensajeError(ventas.error));
-    if (ordenesRecientes.error) throw new Error(mensajeError(ordenesRecientes.error));
-
     return {
-      ordenesAbiertas: ordenesAbiertas.count ?? 0,
+      ordenesAbiertas: (ordenesAbiertas?.datos ?? []).filter((o:any)=>["Abierta","En Proceso","Aguardando Piezas"].includes(o.estado)).length,
       productosStockBajo: alertas.map((a) => ({
         producto: a.descripcion,
         stock: Number(a.stock),
         minimo: Number(a.stock_minimo),
       })),
-      ultimasVentas: (ventas.data ?? []) as Venta[],
+      ultimasVentas: (ventas?.datos ?? []) as Venta[],
       movimientosPendientes: {
         total: movimientos.total,
         vencidos: movimientos.vencidos,
         datos: movimientos.datos,
       },
-      ordenesRecientes: (ordenesRecientes.data ?? []) as OrdenTrabajo[],
+      ordenesRecientes: (ordenesRecientes?.datos ?? []) as OrdenTrabajo[],
     };
   },
 
@@ -87,8 +72,8 @@ export const panelService = {
 
   /** Órdenes abiertas por estado (mini-report para el panel). */
   async ordenesPorEstado(): Promise<{ estado: string; cantidad: number }[]> {
-    const { data, error } = await supabase.from("ordenes_trabajo").select("estado");
-    if (error) throw new Error(mensajeError(error));
+    const r = await api.get("/api/ordenes?tamPagina=500").catch(()=>({datos:[]}));
+    const data = r?.datos ?? [];
     const conteo = new Map<string, number>();
     for (const fila of (data ?? []) as { estado: string }[]) {
       conteo.set(fila.estado, (conteo.get(fila.estado) ?? 0) + 1);

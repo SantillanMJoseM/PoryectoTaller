@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import { llamarRpc } from "../lib/crud";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -30,8 +30,7 @@ export default function CambiarPassword() {
     }
     setGuardando(true);
     try {
-      const { error: err } = await supabase.auth.updateUser({ password: nueva });
-      if (err) throw err;
+      await api.post("/api/auth/force-change-password", { nueva });
       await llamarRpc("finalizar_cambio_contrasena", {});
       navigate("/", { replace: true });
     } catch (e) {

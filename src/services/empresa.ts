@@ -9,9 +9,10 @@
 // ============================================================================
 
 import { crearCrud } from "../lib/crud";
+import { api as apiObj } from "../lib/api";
+const apiGet = apiObj.get;
 import { mensajeError } from "../lib/errores";
 import { generarUuid } from "../lib/uuid";
-import { supabase } from "../lib/supabase";
 import type { Empresa } from "../lib/types";
 
 const LIMITE_BYTES = 5 * 1024 * 1024; // 5 MB para un logo es de sobra
@@ -20,9 +21,8 @@ const crud = crearCrud<Empresa>("empresa", "id");
 export const empresaService = {
   /** Devuelve el registro único de la empresa (o null si aún no existe). */
   async obtener(): Promise<Empresa | null> {
-    const { data, error } = await supabase.from("empresa").select("*").limit(1).maybeSingle();
-    if (error) throw new Error(mensajeError(error));
-    return (data ?? null) as Empresa | null;
+    const r = await apiGet("/api/empresa?tamPagina=1").catch(() => ({ datos: [] }));
+    return ((r?.datos ?? [])[0] ?? null) as Empresa | null;
   },
 
   /** Crea la empresa si no existe; el trigger bloquea un segundo registro. */
@@ -44,12 +44,12 @@ export const empresaService = {
     if (!/^image\//.test(archivo.type)) throw new Error("El logo debe ser una imagen.");
     const sanitizado = archivo.name.replace(/[^\w.\-]/g, "_");
     const ruta = `${generarUuid()}-${sanitizado}`;
-    const { error: errUpload } = await supabase.storage
-      .from("logos")
-      .upload(ruta, archivo, { upsert: false });
-    if (errUpload) throw new Error(mensajeError(errUpload));
-    const { data: pub } = supabase.storage.from("logos").getPublicUrl(ruta);
-    return crud.editar(id, { url_logo: pub.publicUrl } as Partial<Empresa>);
+    const fd = new FormData();
+    fd.append("file", archivo);
+    const res = await fetch(`${apiObj["get"] ? "" : ""}${(import.meta.env.VITE_API_URL||"http://localhost:4000")}/api/storage/upload?bucket=logos`, { method:"POST", headers:{Authorization:`Bearer ${localStorage.getItem("st_access_token")}`}, body: fd });
+    const up = await res.json();
+    const url = `${(import.meta.env.VITE_API_URL||"http://localhost:4000")}/api/storage/download?bucket=logos&ruta=${encodeURIComponent(up.ruta)}`;
+    return crud.editar(id, { urlLogo: url } as Partial<Empresa>);
   },
 };
 

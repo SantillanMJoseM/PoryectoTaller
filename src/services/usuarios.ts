@@ -11,7 +11,7 @@
 // ============================================================================
 import { crearCrud, llamarRpc } from "../lib/crud";
 import { mensajeError } from "../lib/errores";
-import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import { validarUsuario } from "../lib/validaciones";
 import {
   tienePermiso,
@@ -30,13 +30,12 @@ export const usuariosService = {
   contar: crudUsuarios.contar,
 
   async obtener(id: string): Promise<Usuario | null> {
-    const { data, error } = await supabase
-      .from("usuarios")
-      .select(SELECT_USUARIO)
-      .eq("id_usuario", id)
-      .maybeSingle();
-    if (error) throw new Error(mensajeError(error));
-    return (data ?? null) as Usuario | null;
+    const u = await api.get(`/api/usuarios/${id}`).catch(()=>null);
+    if (!u) return null;
+    if (u.permisoId) {
+      try { u.permisos = await api.get(`/api/permisos/${u.permisoId}`); } catch {}
+    }
+    return u as Usuario;
   },
 
   async crear(datos: Partial<Usuario>): Promise<Usuario> {

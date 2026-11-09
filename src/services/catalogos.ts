@@ -8,7 +8,7 @@
 
 import { crearCrud } from "../lib/crud";
 import { mensajeError } from "../lib/errores";
-import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import type { Equipo, EquipoOrden, Marca } from "../lib/types";
 
 const marcasCrud = crearCrud<Marca>("marcas", "id_marca", ["marca"]);
@@ -34,7 +34,7 @@ export const catalogosService = {
     listar: (idCliente?: string, q?: string, opciones?: { pagina?: number; tamPagina?: number }) =>
       equiposCrud.listar({
         q: q ?? "",
-        filtros: idCliente ? { cliente_id: idCliente } : {},
+        filtros: idCliente ? { clienteId: idCliente } : {},
         pagina: opciones?.pagina,
         tamPagina: opciones?.tamPagina,
         columna: "equipo",
@@ -50,17 +50,13 @@ export const catalogosService = {
   },
   equiposOrden: {
     listarDeOrden: async (idOrden: string) => {
-      const { data, error, count } = await supabase
-        .from("equipos_orden")
-        .select("*, equipos:equipo_id(*, marcas:marca_id(marca))", { count: "exact" })
-        .eq("orden_id", idOrden)
-        .order("id_equipo_orden", { ascending: true });
-      if (error) throw new Error(mensajeError(error));
+      const r = await api.get(`/api/equipos-orden?ordenId=${idOrden}&tamPagina=200`).catch(()=>({datos:[]}));
+      const data = r?.datos ?? [];
       return {
         datos: (data ?? []) as EquipoOrden[],
-        total: count ?? data?.length ?? 0,
+        total: data.length,
         pagina: 1,
-        tamPagina: data?.length ?? 0,
+        tamPagina: data.length,
         paginas: 1,
       };
     },

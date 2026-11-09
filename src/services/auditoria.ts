@@ -10,7 +10,7 @@
 
 import { crearCrud, llamarRpc } from "../lib/crud";
 import { mensajeError } from "../lib/errores";
-import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import type { LogAuditoria } from "../lib/types";
 
 const crud = crearCrud<LogAuditoria>("logs_auditoria", "id_log", ["usuario", "tarea"]);
@@ -27,16 +27,11 @@ export const auditoriaService = {
   /** Registra una acción explícita (usada por los flujos de la app). */
   async registrar(tarea: string, usuario?: string, ip?: string): Promise<void> {
     const ahora = new Date();
-    const { error } = await supabase.from("logs_auditoria").insert({
+    await api.post("/api/auditoria/log", {
       usuario: usuario ?? "system",
       tarea,
-      fecha: `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, "0")}-${String(
-        ahora.getDate(),
-      ).padStart(2, "0")}`,
-      hora: ahora.toTimeString().slice(0, 8),
       ip: ip ?? null,
     });
-    if (error) throw new Error(mensajeError(error));
   },
 
   /** Limpia los logs (RPC con permiso dAuditoria y auto-log previo). */

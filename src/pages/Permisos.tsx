@@ -34,7 +34,7 @@ import SimpleSelect from "../components/SimpleSelect";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { useAuth } from "../contexts/AuthContext";
 import { permisosService, usuariosService } from "../services";
-import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import { formatoFecha } from "../lib/fechas";
 import { ACCIONES, DESCRIPCION_ACCIONES, MODULOS, DESCRIPCION_MODULOS, codigo } from "../lib/permisos";
 import type { Permiso } from "../lib/types";
@@ -167,7 +167,7 @@ export default function Permisos() {
           `El grupo “${eliminarFila.nombre}” tiene ${asignados} usuario(s) asignado(s): fue desactivado en lugar de eliminado.`,
         );
       } else {
-        await supabase.from("permisos").delete().eq("id_permiso", eliminarFila.id_permiso);
+        await api.del(`/api/permisos/${eliminarFila.id_permiso}`);
       }
       setEliminarFila(null);
       await cargar();

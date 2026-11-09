@@ -12,7 +12,7 @@
 import { crearCrud, llamarRpc } from "../lib/crud";
 import { mensajeError } from "../lib/errores";
 import { rangoPeriodo, estaVencido, type Periodo } from "../lib/fechas";
-import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import {
   pasaSituacion,
   resumenTotales,
@@ -68,23 +68,19 @@ export const financieroService = {
 
     // Consulta amplia (sin paginar) para aplicar el filtro de situación,
     // que no es una columna (es una regla), y luego paginar en memoria.
-    let consulta = supabase
-      .from("movimientos_financieros")
-      .select(`*, clientes:cliente_id(nombre_cliente), categorias:categoria_id(categoria), cuentas:cuenta_id(cuenta)`);
-    if (rango.fechaInicial) consulta = consulta.gte("fecha_vencimiento", rango.fechaInicial);
-    if (rango.fechaFinal) consulta = consulta.lte("fecha_vencimiento", rango.fechaFinal);
-    if (opciones.tipo) consulta = consulta.eq("tipo", opciones.tipo);
-    if (opciones.clienteId) consulta = consulta.eq("cliente_id", opciones.clienteId);
-    if (opciones.categoriaId) consulta = consulta.eq("categoria_id", opciones.categoriaId);
-    if (opciones.cuentaId) consulta = consulta.eq("cuenta_id", opciones.cuentaId);
-    if (opciones.q?.trim())
-      consulta = consulta.or(
-        `descripcion.ilike.%${opciones.q.trim()}%,cliente_proveedor.ilike.%${opciones.q.trim()}%`,
-      );
-    consulta = consulta.order("fecha_vencimiento", { ascending: true });
-
-    const { data, error } = await consulta;
-    if (error) throw new Error(mensajeError(error));
+    const r = await api.get(`/api/movimientos?tamPagina=500`).catch(()=>({datos:[]}));
+    let data = r?.datos ?? [];
+    if (rango.fechaInicial) data = data.filter((m:any)=> String(m.fecha_vencimiento ?? m.fechaVencimiento) >= String(rango.fechaInicial));
+    if (rango.fechaFinal) data = data.filter((m:any)=> String(m.fecha_vencimiento ?? m.fechaVencimiento) <= String(rango.fechaFinal));
+    if (opciones.tipo) data = data.filter((m:any)=> m.tipo === opciones.tipo);
+    if (opciones.clienteId) data = data.filter((m:any)=> (m.cliente_id ?? m.clienteId) === opciones.clienteId);
+    if (opciones.categoriaId) data = data.filter((m:any)=> (m.categoria_id ?? m.categoriaId) === opciones.categoriaId);
+    if (opciones.cuentaId) data = data.filter((m:any)=> (m.cuenta_id ?? m.cuentaId) === opciones.cuentaId);
+    if (opciones.q?.trim()) {
+      const q = opciones.q.trim().toLowerCase();
+      data = data.filter((m:any)=> String(m.descripcion ?? "").toLowerCase().includes(q) || String(m.cliente_proveedor ?? m.clienteProveedor ?? "").toLowerCase().includes(q));
+    }
+    data.sort((a:any,b:any)=> String(a.fecha_vencimiento ?? a.fechaVencimiento).localeCompare(String(b.fecha_vencimiento ?? b.fechaVencimiento)));
 
     const filtroSit = opciones.situacionFiltro ?? "todos";
     const enriquecidos = (data ?? []).map((m) => {
@@ -155,15 +151,10 @@ export const financieroService = {
 
   /** Solo categorías activas (para el formulario de movimientos). */
   async listarCategorias(tipo?: TipoMovimiento): Promise<Categoria[]> {
-    let consulta = supabase
-      .from("categorias")
-      .select("*")
-      .eq("estado", true)
-      .order("categoria");
-    if (tipo) consulta = consulta.eq("tipo", tipo);
-    const { data, error } = await consulta;
-    if (error) throw new Error(mensajeError(error));
-    return (data ?? []) as Categoria[];
+    const r = await api.get(`/api/categorias?estado=true&tamPagina=500`).catch(()=>({datos:[]}));
+    let data = r?.datos ?? [];
+    if (tipo) data = data.filter((c:any)=> c.tipo === tipo);
+    return data as Categoria[];
   },
 
   // -------------------------------- Cuentas ---------------------------------
@@ -172,12 +163,7 @@ export const financieroService = {
 
   /** Solo cuentas activas. */
   async listarCuentas(): Promise<Cuenta[]> {
-    const { data, error } = await supabase
-      .from("cuentas")
-      .select("*")
-      .eq("estado", true)
-      .order("cuenta");
-    if (error) throw new Error(mensajeError(error));
-    return (data ?? []) as Cuenta[];
+    const r = await api.get(`/api/cuentas?estado=true&tamPagina=500`).catch(()=>({datos:[]}));
+    return (r?.datos ?? []) as Cuenta[];
   },
 };

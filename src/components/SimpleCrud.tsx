@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 
+const ENDPOINT: Record<string,string> = {
+  marcas:"/api/marcas",categorias:"/api/categorias",cuentas:"/api/cuentas",servicios:"/api/servicios",garantias:"/api/garantias",permisos:"/api/permisos",
+};
 interface Col { key: string; label: string }
 interface Field { key: string; label: string; type?: string }
 
@@ -15,16 +18,17 @@ export default function SimpleCrud({ title, table, pk, columns, fields }: { titl
   const [form, setForm] = useState<any>({});
   const [loading, setLoading] = useState(false);
 
+  const base = ENDPOINT[table] ?? `/api/${table}`;
   const load = async () => {
-    const { data } = await supabase.from(table).select("*").order(pk, { ascending: false }).limit(100);
-    setRows(data ?? []);
+    const r = await api.get(`${base}?tamPagina=100`).catch(()=>({datos:[]}));
+    setRows(r?.datos ?? []);
   };
   useEffect(() => { load(); }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    await supabase.from(table).insert(form);
+    await api.post(base, form);
     setLoading(false);
     setOpen(false);
     setForm({});
@@ -33,7 +37,7 @@ export default function SimpleCrud({ title, table, pk, columns, fields }: { titl
 
   const remove = async (id: any) => {
     if (!confirm("Eliminar?")) return;
-    await supabase.from(table).delete().eq(pk, id);
+    await api.del(`${base}/${id}`);
     load();
   };
 
