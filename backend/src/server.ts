@@ -67,13 +67,35 @@ app.use("/api/servicios", crud("servicio", "idServicio", ["nombre", "descripcion
 app.use("/api/garantias", crud("garantia", "idGarantia", ["referencia", "textoGarantia"], { view: "vGarantia", add: "aGarantia", edit: "eGarantia", del: "dGarantia" }));
 app.use("/api/categorias", crud("categoria", "idCategoria", ["categoria"], { view: "vMovimiento", add: "aMovimiento", edit: "eMovimiento", del: "dMovimiento" }));
 app.use("/api/cuentas", crud("cuenta", "idCuenta", ["cuenta", "banco"], { view: "vMovimiento", add: "aMovimiento", edit: "eMovimiento", del: "dMovimiento" }));
-app.use("/api/ordenes", crud("ordenTrabajo", "idOrden", [], { view: "vOrden", add: "aOrden", edit: "eOrden", del: "dOrden" }));
+app.use("/api/ordenes", crud("ordenTrabajo", "idOrden", [], { view: "vOrden", add: "aOrden", edit: "eOrden", del: "dOrden", guardUpdate: async (id: string) => {
+  const o = await prisma.ordenTrabajo.findUnique({ where: { idOrden: id } });
+  if (o?.facturado) throw new Error("La orden ya está facturada y no puede modificarse.");
+}, guardDelete: async (id: string) => {
+  const o = await prisma.ordenTrabajo.findUnique({ where: { idOrden: id } });
+  if (o?.facturado) throw new Error("La orden ya está facturada y no puede eliminarse.");
+} }));
 app.use("/api/productos-orden", crud("productoOrden", "idProductoOrden", [], { view: "vOrden", add: "aOrden", edit: "eOrden", del: "dOrden" }));
 app.use("/api/servicios-orden", crud("servicioOrden", "idServicioOrden", [], { view: "vOrden", add: "aOrden", edit: "eOrden", del: "dOrden" }));
 app.use("/api/equipos-orden", crud("equipoOrden", "idEquipoOrden", [], { view: "vOrden", add: "aOrden", edit: "eOrden", del: "dOrden" }));
 app.use("/api/anexos", crud("anexo", "idAnexo", ["anexo"], { view: "vOrden", add: "aOrden", edit: "eOrden", del: "dOrden" }));
-app.use("/api/ventas", crud("venta", "idVenta", [], { view: "vVenta", add: "aVenta", edit: "eVenta", del: "dVenta" }));
-app.use("/api/items-venta", crud("itemVenta", "idItemVenta", [], { view: "vVenta", add: "aVenta", edit: "eVenta", del: "dVenta" }));
+app.use("/api/ventas", crud("venta", "idVenta", [], { view: "vVenta", add: "aVenta", edit: "eVenta", del: "dVenta", guardUpdate: async (id: string) => {
+  const v = await prisma.venta.findUnique({ where: { idVenta: id } });
+  if (v?.facturado) throw new Error("La venta ya está facturada y no puede modificarse.");
+}, guardDelete: async (id: string) => {
+  const v = await prisma.venta.findUnique({ where: { idVenta: id } });
+  if (v?.facturado) throw new Error("La venta ya está facturada y no puede eliminarse.");
+} }));
+app.use("/api/items-venta", crud("itemVenta", "idItemVenta", [], { view: "vVenta", add: "aVenta", edit: "eVenta", del: "dVenta", guardUpdate: async (id: string) => {
+  const it = await prisma.itemVenta.findUnique({ where: { idItemVenta: id } });
+  if (!it) return;
+  const v = await prisma.venta.findUnique({ where: { idVenta: it.ventaId } });
+  if (v?.facturado) throw new Error("La venta ya está facturada y no puede modificarse.");
+}, guardDelete: async (id: string) => {
+  const it = await prisma.itemVenta.findUnique({ where: { idItemVenta: id } });
+  if (!it) return;
+  const v = await prisma.venta.findUnique({ where: { idVenta: it.ventaId } });
+  if (v?.facturado) throw new Error("La venta ya está facturada y no puede modificarse.");
+} }));
 app.use("/api/movimientos", crud("movimientoFinanciero", "idMovimiento", ["descripcion", "clienteProveedor"], { view: "vMovimiento", add: "aMovimiento", edit: "eMovimiento", del: "dMovimiento" }));
 app.use("/api/documentos", crud("documento", "idDocumento", ["documento", "descripcion"], { view: "vArchivo", add: "aArchivo", edit: "eArchivo", del: "dArchivo" }));
 app.use("/api/logs", crud("logAuditoria", "idLog", [], { view: "vAuditoria", add: "", edit: "", del: "dAuditoria" }));

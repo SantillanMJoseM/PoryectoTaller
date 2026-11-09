@@ -11,6 +11,8 @@ export interface CrudConfig {
   permisos: { view: string; add: string; edit: string; del: string };
   // portal access: function returning extra where for cliente role
   portalFilter?: (userId: string) => any;
+  guardUpdate?: (id: string, data: any) => Promise<void>;
+  guardDelete?: (id: string) => Promise<void>;
 }
 
 function model() { return prisma as any; }
@@ -72,11 +74,13 @@ export function buildCrudRouter(cfg: CrudConfig, authMw: any, permMw: (c: string
   });
 
   r.put("/:id", authMw, E, async (req: Request, res: Response) => {
+    if (cfg.guardUpdate) await cfg.guardUpdate(req.params.id as string, req.body);
     const item = await M().update({ where: { [cfg.pk]: req.params.id }, data: req.body });
     res.json(item);
   });
 
   r.delete("/:id", authMw, D, async (req: Request, res: Response) => {
+    if (cfg.guardDelete) await cfg.guardDelete(req.params.id as string);
     await M().delete({ where: { [cfg.pk]: req.params.id } });
     res.status(204).send();
   });

@@ -174,26 +174,34 @@ r.post("/orden/facturar", auth, requirePermission("aMovimiento"), asyncHandler(a
   const { ordenId, fechaVencimiento, formaPago, categoriaId, cuentaId } = req.body;
   const orden = await prisma.ordenTrabajo.findUnique({ where: { idOrden: ordenId } });
   if (!orden) throw new HttpError(400, "Orden inexistente.");
+  if (orden.facturado) throw new HttpError(400, "La orden ya está facturada.");
   if (Number(orden.valorTotal) <= 0) throw new HttpError(400, "No se puede facturar una orden sin valor total.");
-  const mov = await prisma.movimientoFinanciero.create({ data: {
-    descripcion: "Facturación de orden", valor: orden.valorTotal,
-    fechaVencimiento: fechaVencimiento ? new Date(fechaVencimiento) : new Date(),
-    pagado: false, formaPago, tipo: "ingreso", clienteId: orden.clienteId,
-    categoriaId: categoriaId || null, cuentaId: cuentaId || null } });
-  await prisma.ordenTrabajo.update({ where: { idOrden: ordenId }, data: { facturado: true, lanzamientoId: mov.idMovimiento } });
+  const mov = await prisma.$transaction(async (tx) => {
+    const m = await tx.movimientoFinanciero.create({ data: {
+      descripcion: "Facturación de orden", valor: orden.valorTotal,
+      fechaVencimiento: fechaVencimiento ? new Date(fechaVencimiento) : new Date(),
+      pagado: false, formaPago, tipo: "ingreso", clienteId: orden.clienteId,
+      categoriaId: categoriaId || null, cuentaId: cuentaId || null } });
+    await tx.ordenTrabajo.update({ where: { idOrden: ordenId }, data: { facturado: true, lanzamientoId: m.idMovimiento } });
+    return m;
+  });
   res.json(mov);
 }));
 r.post("/venta/facturar", auth, requirePermission("aMovimiento"), asyncHandler(async (req, res) => {
   const { ventaId, fechaVencimiento, formaPago, categoriaId, cuentaId } = req.body;
   const venta = await prisma.venta.findUnique({ where: { idVenta: ventaId } });
   if (!venta) throw new HttpError(400, "Venta inexistente.");
+  if (venta.facturado) throw new HttpError(400, "La venta ya está facturada.");
   if (Number(venta.valorTotal) <= 0) throw new HttpError(400, "No se puede facturar una venta sin valor total.");
-  const mov = await prisma.movimientoFinanciero.create({ data: {
-    descripcion: "Facturación de venta", valor: venta.valorTotal,
-    fechaVencimiento: fechaVencimiento ? new Date(fechaVencimiento) : new Date(),
-    pagado: false, formaPago, tipo: "ingreso", clienteId: venta.clienteId,
-    categoriaId: categoriaId || null, cuentaId: cuentaId || null } });
-  await prisma.venta.update({ where: { idVenta: ventaId }, data: { facturado: true, lanzamientoId: mov.idMovimiento } });
+  const mov = await prisma.$transaction(async (tx) => {
+    const m = await tx.movimientoFinanciero.create({ data: {
+      descripcion: "Facturación de venta", valor: venta.valorTotal,
+      fechaVencimiento: fechaVencimiento ? new Date(fechaVencimiento) : new Date(),
+      pagado: false, formaPago, tipo: "ingreso", clienteId: venta.clienteId,
+      categoriaId: categoriaId || null, cuentaId: cuentaId || null } });
+    await tx.venta.update({ where: { idVenta: ventaId }, data: { facturado: true, lanzamientoId: m.idMovimiento } });
+    return m;
+  });
   res.json(mov);
 }));
 
