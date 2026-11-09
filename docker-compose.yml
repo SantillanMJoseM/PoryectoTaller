@@ -24,7 +24,7 @@ services:
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-change-me-access}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change-me-refresh}
       STORAGE_DIR: /data/storage
-      CORS_ORIGIN: http://localhost:80
+      CORS_ORIGIN: ""
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@taller.local}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-ChangeMe123!}
       FORCE_PASSWORD_CHANGE: "true"

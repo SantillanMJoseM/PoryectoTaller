@@ -84,6 +84,12 @@ fi
 # ---------- F2: Configuración automática ----------
 if [ -f "$ENV_FILE" ]; then
   warn "Ya existe $ENV_FILE. No se sobrescribirán secretos existentes."
+  # Garantizar que la URL de API sea relativa en producción (sin localhost/IP)
+  if grep -q "^VITE_API_URL=" "$ENV_FILE"; then
+    sed -i 's|^VITE_API_URL=.*|VITE_API_URL=|' "$ENV_FILE"
+  else
+    echo "VITE_API_URL=" >> "$ENV_FILE"
+  fi
 else
   info "Generando .env seguro..."
   SERVER_IP="$(hostname -I | awk '{print $1}')"
@@ -102,7 +108,7 @@ JWT_REFRESH_SECRET=${JWT_REFRESH}
 ACCESS_TOKEN_TTL=15m
 REFRESH_TOKEN_TTL=7d
 STORAGE_DIR=/data/storage
-CORS_ORIGIN=*
+CORS_ORIGIN=
 ADMIN_EMAIL=admin@taller.com
 ADMIN_PASSWORD=${ADMIN_PASS}
 FORCE_PASSWORD_CHANGE=true
@@ -130,7 +136,8 @@ mkdir -p "$BACKUP_DIR"
 # ---------- F3: Construcción y despliegue ----------
 info "Construyendo imágenes y levantando servicios..."
 cd "$APP_DIR"
-docker compose -f "$COMPOSE_FILE" up -d --build 2>&1 | tail -20
+docker compose -f "$COMPOSE_FILE" build --no-cache 2>&1 | tail -20
+docker compose -f "$COMPOSE_FILE" up -d 2>&1 | tail -20
 
 info "Esperando a que PostgreSQL esté healthy..."
 for i in $(seq 1 60); do

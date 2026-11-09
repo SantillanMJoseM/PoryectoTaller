@@ -7,7 +7,8 @@ bash "$APP_DIR/scripts/backup-postgresql.sh"
 echo "[INFO] Descargando cambios..."
 git pull origin migration/postgres-puro
 echo "[INFO] Construyendo imágenes..."
-docker compose up -d --build
+docker compose build --no-cache
+docker compose up -d
 echo "[INFO] Aplicando migraciones (automático en backend)..."
 docker compose logs backend --tail 20
 echo "[OK] Actualización finalizada."
