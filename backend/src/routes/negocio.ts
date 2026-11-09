@@ -11,7 +11,7 @@ const auth = requireAuth;
 async function ajustarStock(productoId: string, delta: number) {
   const p = await prisma.producto.findUnique({ where: { idProducto: productoId } });
   if (!p) throw new HttpError(400, "Producto inexistente.");
-  const newStock = Number(p.stock) + delta;
+  const newStock = Math.round((Number(p.stock) + delta) * 100) / 100;
   if (newStock < 0) throw new HttpError(400, "Stock insuficiente.");
   await prisma.producto.update({ where: { idProducto: productoId }, data: { stock: newStock } });
 }
@@ -36,12 +36,12 @@ r.post("/orden/agregar-producto", auth, requirePermission("aOrden"), asyncHandle
 async function recalcOrden(ordenId: string) {
   const po = await prisma.productoOrden.findMany({ where: { ordenId } });
   const so = await prisma.servicioOrden.findMany({ where: { ordenId } });
-  const total = po.reduce((a,l)=>a+Number(l.subtotal),0) + so.reduce((a,l)=>a+Number(l.subtotal),0);
+  const total = Math.round((po.reduce((a,l)=>a+Number(l.subtotal),0) + so.reduce((a,l)=>a+Number(l.subtotal),0)) * 100) / 100;
   await prisma.ordenTrabajo.update({ where: { idOrden: ordenId }, data: { valorTotal: total } });
 }
 async function recalcVenta(ventaId: string, descuento: number = 0) {
   const items = await prisma.itemVenta.findMany({ where: { ventaId } });
-  const total = items.reduce((a,l)=>a+Number(l.subtotal),0) - descuento;
+  const total = Math.round((items.reduce((a,l)=>a+Number(l.subtotal),0) - descuento) * 100) / 100;
   await prisma.venta.update({ where: { idVenta: ventaId }, data: { valorTotal: total } });
 }
 
