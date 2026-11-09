@@ -21,7 +21,7 @@ export const autenticacionService = {
       const m = /invalid/i.test(e?.message ?? "") ? "Correo o contraseña incorrectos." : (e?.message ?? mensajeError(e));
       throw new Error(m);
     }
-    setTokens(data.accessToken, data.refreshToken);
+    setTokens(data.access_token, data.refresh_token);
     const user = data.user;
     // load full perfil from backend
     let perfil: any = null;

@@ -38,7 +38,7 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<an
     if (r.ok) {
       const d = await r.json();
       setTokens(d.access_token, d.refresh_token);
-      headers["Authorization"] = `Bearer ${d.accessToken}`;
+      headers["Authorization"] = `Bearer ${d.access_token}`;
       res = await fetch(`${BASE}${path}`, { ...init, headers });
     } else {
       clearTokens();

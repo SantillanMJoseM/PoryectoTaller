@@ -18,7 +18,7 @@ export const portalService = {
     const d = documento.trim();
     if (!c || !d) throw new Error("Ingrese correo electrónico y documento.");
     const data = await api.post("/api/auth/portal-login", { correo: c, documento: d });
-    setTokens(data.accessToken, data.refreshToken);
+    setTokens(data.access_token, data.refresh_token);
     const encendida: SesionPortal = {
       idCliente: data.cliente.id_cliente,
       nombre: data.cliente.nombre_cliente,
