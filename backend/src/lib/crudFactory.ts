@@ -15,6 +15,7 @@ export interface CrudConfig {
   guardUpdate?: (id: string, data: any) => Promise<void>;
   guardDelete?: (id: string) => Promise<void>;
   sortableFields?: string[];
+  relations?: Record<string, { relation: string; pk: string }>;
 }
 
 function model() { return prisma as any; }
@@ -98,4 +99,25 @@ export function buildCrudRouter(cfg: CrudConfig, authMw: any, permMw: (c: string
 }));
 
   return r;
+}
+
+
+function transformRelations(cfg: CrudConfig, body: any): any {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return body;
+  const out: any = { ...body };
+  if (cfg.relations) {
+    for (const [field, info] of Object.entries(cfg.relations)) {
+      if (field in out) {
+        const val = out[field];
+        delete out[field];
+        if (val === null || val === undefined || val === "") {
+          // omit on create; disconnect on update is handled by Prisma null
+          out[info.relation] = null;
+        } else {
+          out[info.relation] = { connect: { [info.pk]: val } };
+        }
+      }
+    }
+  }
+  return out;
 }

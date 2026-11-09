@@ -51,8 +51,8 @@ app.use((req, _res, next) => {
 import { requirePermission } from "./middleware/auth.js";
 
 function crud(model: string, pk: string, search: string[], permisos: any) {
-  const { sortableFields, guardUpdate, guardDelete, portalFilter, ...rest } = permisos || {};
-  return buildCrudRouter({ model, pk, searchFields: search, permisos: rest, sortableFields, guardUpdate, guardDelete, portalFilter }, requireAuth, requirePermission);
+  const { sortableFields, guardUpdate, guardDelete, portalFilter, relations, ...rest } = permisos || {};
+  return buildCrudRouter({ model, pk, searchFields: search, permisos: rest, sortableFields, guardUpdate, guardDelete, portalFilter, relations }, requireAuth, requirePermission);
 }
 
 // Register crud routers
@@ -62,31 +62,31 @@ app.use("/api/permisos", crud("permiso", "idPermiso", ["nombre"], { view: "vPerm
 app.use("/api/usuarios", crud("usuario", "idUsuario", ["nombre", "correo"], { view: "vUsuario", add: "aUsuario", edit: "eUsuario", del: "dUsuario", sortableFields: ["idUsuario","nombre","correo","fechaRegistro","estadoUsuario"] }));
 app.use("/api/clientes", crud("cliente", "idCliente", ["nombreCliente", "documento", "correo"], { view: "vCliente", add: "aCliente", edit: "eCliente", del: "dCliente", sortableFields: ["idCliente","nombreCliente","documento","correo","fechaRegistro","ciudad"] }));
 app.use("/api/marcas", crud("marca", "idMarca", ["marca"], { view: "vCliente", add: "aCliente", edit: "eCliente", del: "dCliente", sortableFields: ["idMarca","marca","fechaRegistro","estado"] }));
-app.use("/api/equipos", crud("equipo", "idEquipo", ["equipo", "numeroSerie", "modelo"], { view: "vCliente", add: "aCliente", edit: "eCliente", del: "dCliente", sortableFields: ["idEquipo","equipo","numeroSerie","modelo","fechaFabricacion"] }));
+app.use("/api/equipos", crud("equipo", "idEquipo", ["equipo", "numeroSerie", "modelo"], { view: "vCliente", add: "aCliente", edit: "eCliente", del: "dCliente", sortableFields: ["idEquipo","equipo","numeroSerie","modelo","fechaFabricacion"], relations: { marcaId: { relation: "marca", pk: "idMarca" }, clienteId: { relation: "cliente", pk: "idCliente" } } }));
 app.use("/api/productos", crud("producto", "idProducto", ["descripcion"], { view: "vProducto", add: "aProducto", edit: "eProducto", del: "dProducto", sortableFields: ["idProducto","descripcion","precioCompra","precioVenta","stock","stockMinimo"] }));
 app.use("/api/servicios", crud("servicio", "idServicio", ["nombre", "descripcion"], { view: "vServicio", add: "aServicio", edit: "eServicio", del: "dServicio", sortableFields: ["idServicio","nombre","precio"] }));
-app.use("/api/garantias", crud("garantia", "idGarantia", ["referencia", "textoGarantia"], { view: "vGarantia", add: "aGarantia", edit: "eGarantia", del: "dGarantia", sortableFields: ["idGarantia","fechaGarantia","referencia"] }));
+app.use("/api/garantias", crud("garantia", "idGarantia", ["referencia", "textoGarantia"], { view: "vGarantia", add: "aGarantia", edit: "eGarantia", del: "dGarantia", sortableFields: ["idGarantia","fechaGarantia","referencia"], relations: { usuarioId: { relation: "usuario", pk: "idUsuario" } } }));
 app.use("/api/categorias", crud("categoria", "idCategoria", ["categoria"], { view: "vMovimiento", add: "aMovimiento", edit: "eMovimiento", del: "dMovimiento", sortableFields: ["idCategoria","categoria","tipo","fechaRegistro","estado"] }));
 app.use("/api/cuentas", crud("cuenta", "idCuenta", ["cuenta", "banco"], { view: "vMovimiento", add: "aMovimiento", edit: "eMovimiento", del: "dMovimiento", sortableFields: ["idCuenta","cuenta","banco","tipo","saldo","fechaRegistro","estado"] }));
-app.use("/api/ordenes", crud("ordenTrabajo", "idOrden", [], { view: "vOrden", add: "aOrden", edit: "eOrden", del: "dOrden", sortableFields: ["idOrden","fechaInicial","fechaFinal","estado","valorTotal","facturado","clienteId","usuarioId"], guardUpdate: async (id: string) => {
+app.use("/api/ordenes", crud("ordenTrabajo", "idOrden", [], { view: "vOrden", add: "aOrden", edit: "eOrden", del: "dOrden", sortableFields: ["idOrden","fechaInicial","fechaFinal","estado","valorTotal","facturado","clienteId","usuarioId"], relations: { clienteId: { relation: "cliente", pk: "idCliente" }, usuarioId: { relation: "usuario", pk: "idUsuario" }, garantiaId: { relation: "garantiaRef", pk: "idGarantia" } }, guardUpdate: async (id: string) => {
   const o = await prisma.ordenTrabajo.findUnique({ where: { idOrden: id } });
   if (o?.facturado) throw new Error("La orden ya está facturada y no puede modificarse.");
 }, guardDelete: async (id: string) => {
   const o = await prisma.ordenTrabajo.findUnique({ where: { idOrden: id } });
   if (o?.facturado) throw new Error("La orden ya está facturada y no puede eliminarse.");
 } }));
-app.use("/api/productos-orden", crud("productoOrden", "idProductoOrden", [], { view: "vOrden", add: "aOrden", edit: "eOrden", del: "dOrden", sortableFields: ["idProductoOrden","cantidad","precio","subtotal","ordenId"] }));
-app.use("/api/servicios-orden", crud("servicioOrden", "idServicioOrden", [], { view: "vOrden", add: "aOrden", edit: "eOrden", del: "dOrden", sortableFields: ["idServicioOrden","servicio","cantidad","precio","subtotal","ordenId"] }));
-app.use("/api/equipos-orden", crud("equipoOrden", "idEquipoOrden", [], { view: "vOrden", add: "aOrden", edit: "eOrden", del: "dOrden", sortableFields: ["idEquipoOrden","equipoId","ordenId"] }));
-app.use("/api/anexos", crud("anexo", "idAnexo", ["anexo"], { view: "vOrden", add: "aOrden", edit: "eOrden", del: "dOrden", sortableFields: ["idAnexo","anexo","ordenId"] }));
-app.use("/api/ventas", crud("venta", "idVenta", [], { view: "vVenta", add: "aVenta", edit: "eVenta", del: "dVenta", sortableFields: ["idVenta","fechaVenta","valorTotal","descuento","facturado","clienteId","usuarioId"], guardUpdate: async (id: string) => {
+app.use("/api/productos-orden", crud("productoOrden", "idProductoOrden", [], { view: "vOrden", add: "aOrden", edit: "eOrden", del: "dOrden", sortableFields: ["idProductoOrden","cantidad","precio","subtotal","ordenId"], relations: { ordenId: { relation: "orden", pk: "idOrden" }, productoId: { relation: "producto", pk: "idProducto" } } }));
+app.use("/api/servicios-orden", crud("servicioOrden", "idServicioOrden", [], { view: "vOrden", add: "aOrden", edit: "eOrden", del: "dOrden", sortableFields: ["idServicioOrden","servicio","cantidad","precio","subtotal","ordenId"], relations: { ordenId: { relation: "orden", pk: "idOrden" }, servicioId: { relation: "servicioRef", pk: "idServicio" } } }));
+app.use("/api/equipos-orden", crud("equipoOrden", "idEquipoOrden", [], { view: "vOrden", add: "aOrden", edit: "eOrden", del: "dOrden", sortableFields: ["idEquipoOrden","equipoId","ordenId"], relations: { equipoId: { relation: "equipo", pk: "idEquipo" }, ordenId: { relation: "orden", pk: "idOrden" } } }));
+app.use("/api/anexos", crud("anexo", "idAnexo", ["anexo"], { view: "vOrden", add: "aOrden", edit: "eOrden", del: "dOrden", sortableFields: ["idAnexo","anexo","ordenId"], relations: { ordenId: { relation: "orden", pk: "idOrden" } } }));
+app.use("/api/ventas", crud("venta", "idVenta", [], { view: "vVenta", add: "aVenta", edit: "eVenta", del: "dVenta", sortableFields: ["idVenta","fechaVenta","valorTotal","descuento","facturado","clienteId","usuarioId"], relations: { clienteId: { relation: "cliente", pk: "idCliente" }, usuarioId: { relation: "usuario", pk: "idUsuario" } }, guardUpdate: async (id: string) => {
   const v = await prisma.venta.findUnique({ where: { idVenta: id } });
   if (v?.facturado) throw new Error("La venta ya está facturada y no puede modificarse.");
 }, guardDelete: async (id: string) => {
   const v = await prisma.venta.findUnique({ where: { idVenta: id } });
   if (v?.facturado) throw new Error("La venta ya está facturada y no puede eliminarse.");
 } }));
-app.use("/api/items-venta", crud("itemVenta", "idItemVenta", [], { view: "vVenta", add: "aVenta", edit: "eVenta", del: "dVenta", sortableFields: ["idItemVenta","cantidad","precio","subtotal","ventaId","productoId"], guardUpdate: async (id: string) => {
+app.use("/api/items-venta", crud("itemVenta", "idItemVenta", [], { view: "vVenta", add: "aVenta", edit: "eVenta", del: "dVenta", sortableFields: ["idItemVenta","cantidad","precio","subtotal","ventaId","productoId"], relations: { ventaId: { relation: "venta", pk: "idVenta" }, productoId: { relation: "producto", pk: "idProducto" } }, guardUpdate: async (id: string) => {
   const it = await prisma.itemVenta.findUnique({ where: { idItemVenta: id } });
   if (!it) return;
   const v = await prisma.venta.findUnique({ where: { idVenta: it.ventaId } });
@@ -97,11 +97,11 @@ app.use("/api/items-venta", crud("itemVenta", "idItemVenta", [], { view: "vVenta
   const v = await prisma.venta.findUnique({ where: { idVenta: it.ventaId } });
   if (v?.facturado) throw new Error("La venta ya está facturada y no puede modificarse.");
 } }));
-app.use("/api/movimientos", crud("movimientoFinanciero", "idMovimiento", ["descripcion", "clienteProveedor"], { view: "vMovimiento", add: "aMovimiento", edit: "eMovimiento", del: "dMovimiento", sortableFields: ["idMovimiento","descripcion","valor","fechaVencimiento","fechaPago","pagado","tipo","clienteId"] }));
+app.use("/api/movimientos", crud("movimientoFinanciero", "idMovimiento", ["descripcion", "clienteProveedor"], { view: "vMovimiento", add: "aMovimiento", edit: "eMovimiento", del: "dMovimiento", sortableFields: ["idMovimiento","descripcion","valor","fechaVencimiento","fechaPago","pagado","tipo","clienteId"], relations: { clienteId: { relation: "cliente", pk: "idCliente" }, categoriaId: { relation: "categoria", pk: "idCategoria" }, cuentaId: { relation: "cuenta", pk: "idCuenta" }, ventaId: { relation: "venta", pk: "idVenta" } } }));
 app.use("/api/documentos", crud("documento", "idDocumento", ["documento", "descripcion"], { view: "vArchivo", add: "aArchivo", edit: "eArchivo", del: "dArchivo", sortableFields: ["idDocumento","documento","categoria","tipo","fechaRegistro","tamanio"] }));
 app.use("/api/logs", crud("logAuditoria", "idLog", [], { view: "vAuditoria", add: "", edit: "", del: "dAuditoria", sortableFields: ["idLog","usuario","tarea","fecha","hora"] }));
 app.use("/api/emails", crud("colaEmail", "id", [], { view: "vEmail", add: "", edit: "", del: "dEmail", sortableFields: ["id","para","estado","fecha"] }));
-app.use("/api/sesiones", crud("sesion", "idSesion", [], { view: "vUsuario", add: "", edit: "", del: "", sortableFields: ["idSesion","tipo","inicioSesion","expiracion","activa"] }));
+app.use("/api/sesiones", crud("sesion", "idSesion", [], { view: "vUsuario", add: "", edit: "", del: "", sortableFields: ["idSesion","tipo","inicioSesion","expiracion","activa"], relations: { usuarioId: { relation: "usuario", pk: "idUsuario" }, clienteId: { relation: "cliente", pk: "idCliente" } } }));
 
 // auth & negocio & storage
 app.use("/api/auth", authRoutes);
