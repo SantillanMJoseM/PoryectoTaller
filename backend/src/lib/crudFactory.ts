@@ -82,13 +82,15 @@ export function buildCrudRouter(cfg: CrudConfig, authMw: any, permMw: (c: string
 }));
 
   r.post("/", authMw, A, asyncHandler(async (req: Request, res: Response) => {
-    const item = await M().create({ data: req.body });
+    const data = transformRelations(cfg, req.body);
+    const item = await M().create({ data });
     res.status(201).json(item);
 }));
 
   r.put("/:id", authMw, E, asyncHandler(async (req: Request, res: Response) => {
     if (cfg.guardUpdate) await cfg.guardUpdate(req.params.id as string, req.body);
-    const item = await M().update({ where: { [cfg.pk]: req.params.id }, data: req.body });
+    const data = transformRelations(cfg, req.body);
+    const item = await M().update({ where: { [cfg.pk]: req.params.id }, data });
     res.json(item);
 }));
 
